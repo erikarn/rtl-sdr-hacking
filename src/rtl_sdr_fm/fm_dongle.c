@@ -65,12 +65,6 @@
 #include "fm_cfg.h"
 #include "fm_dongle.h"
 
-#if 0
-static volatile int do_exit = 0;
-static int lcm_post[17] = {1,1,1,3,1,5,3,7,1,9,5,11,3,13,7,15,1};
-static int ACTUAL_BUF_LENGTH;
-#endif
-
 void dongle_init(struct dongle_state *s, struct demod_state *demod)
 {
 	s->rate = DEFAULT_SAMPLE_RATE;
