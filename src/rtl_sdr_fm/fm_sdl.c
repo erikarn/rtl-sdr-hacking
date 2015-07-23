@@ -111,7 +111,7 @@ draw_fft_data(struct fm_sdl_state *fm)
 {
 	int size, i;
 	float x, y;
-	int mul = 64;
+	int mul = 256;
 
 	/*
 	 * Let's map the +ve FFT frequency domain point
@@ -123,7 +123,11 @@ draw_fft_data(struct fm_sdl_state *fm)
 	glColor3f(0, 1, 1);
 	size = 640;
 	/* XXX complete hack; assumes 262144 points; uses mult to scale rather than avg */
-	for (i = 0; i < size / 2; i++) {
+	/*
+	 * XXX TODO: the fft_out bins are ordered 0..BW/2, then -BW/2..0.
+	 * This should be done for the purposes of the plot!
+	 */
+	for (i = 1; i < size / 2; i++) {
 		x = ((float) i * 640.0 * 2.0) / (float) size;
 		y = fft_mag(fm->fft_out[i*mul][0], fm->fft_out[i*mul][1], 128.0);
 		/* y starts at the bottom */
@@ -136,6 +140,9 @@ draw_fft_data(struct fm_sdl_state *fm)
 void
 fm_sdl_display_update(struct fm_sdl_state *fm)
 {
+
+    process_events();
+
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glLoadIdentity();
 
@@ -239,73 +246,6 @@ fm_scr_init(struct fm_sdl_state *fs)
 
 	return 1;
 }
-
-#if 0
-int
-main(int argc, const char *argv[])
-{
-	struct mw_app app;
-	struct pollfd pollfds[2];
-	int r, n;
-
-	bzero(&app, sizeof(app));
-
-	app.mw = mindwave_new();
-	if (app.mw == NULL)
-		err(1, "mindwave_new");
-
-	if (mindwave_set_serial(app.mw, SER_PORT) != 0)
-		err(1, "mindwave_set_serial");
-
-	/* Setup callbacks */
-	mindwave_setup_cb(app.mw, &app, mw_app_attention_cb, mw_app_meditation_cb, mw_app_quality_cb);
-
-	/*
-	 * Now we've set it up, let's fetch the sample size
-	 * and setup the fft plan.
-	 */
-	app.fft_in = fftw_malloc(sizeof(fftw_complex) * app.mw->raw_samples.len);
-	app.fft_out = fftw_malloc(sizeof(fftw_complex) * app.mw->raw_samples.len);
-	app.fft_p = fftw_plan_dft_1d(app.mw->raw_samples.len, app.fft_in, app.fft_out, FFTW_FORWARD, FFTW_ESTIMATE);
-
-	if (mindwave_open(app.mw) != 0)
-		err(1, "mindwave_open");
-
-	/* Disconnect from any existing headset */
-	sleep(1);
-	if (mindwave_send_disconnect(app.mw) < 0)
-		err(1, "mindwave_disconnect");
-
-	/* Connect to a specific headset */
-	sleep(1);
-	if (mindwave_connect_headset(app.mw, 0x871f) < 0)
-		err(1, "mindwave_connect_headset");
-
-	if (scr_init() == 0)
-		exit(127);
-
-	/*
-	 * Poll.
-	 */
-	while (1) {
-		/* Run mindwave IO loop if needed */
-		mw_poll_check(app.mw);
-		/* Process incoming events. */
-		process_events();
-
-		/* Update incoming FFT */
-		update_fft_in(&app);
-
-		/* Run FFT */
-		fftw_execute(app.fft_p);
-
-		/* Draw the screen. */
-		draw_screen(&app);
-	}
-
-	exit(0);
-}
-#endif
 
 int
 fm_sdl_init(struct fm_sdl_state *fs, int n)
