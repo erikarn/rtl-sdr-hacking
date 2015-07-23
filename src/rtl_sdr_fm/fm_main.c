@@ -60,6 +60,8 @@
 #include <pthread.h>
 #include <libusb.h>
 
+#include <fftw3.h>
+
 #include "rtl-sdr.h"
 #include "convenience.h"
 
@@ -67,6 +69,7 @@
 #include "fm_dongle.h"
 #include "fm_demod.h"
 #include "fm_output.h"
+#include "fm_sdl.h"
 
 int do_exit = 0;
 
@@ -91,6 +94,7 @@ struct dongle_state dongle;
 struct demod_state demod;
 struct output_state output;
 struct controller_state controller;
+struct fm_sdl_state state_sdl;
 
 void usage(void)
 {
@@ -176,7 +180,10 @@ static void rtlsdr_callback(unsigned char *buf, uint32_t len, void *ctx)
 	memcpy(d->lowpassed, s->buf16, 2*len);
 	d->lp_len = len;
 	pthread_rwlock_unlock(&d->rw);
+	/* XXX global state */
+	(void) fm_sdl_update(&state_sdl, (int16_t *)s->buf16, len);
 	safe_cond_signal(&d->ready, &d->ready_m);
+	safe_cond_signal(&state_sdl.ready, &state_sdl.ready_m);
 }
 
 static void *dongle_thread_fn(void *arg)
@@ -223,6 +230,29 @@ static void *output_thread_fn(void *arg)
 		pthread_rwlock_unlock(&s->rw);
 	}
 	return 0;
+}
+
+static void *
+fm_sdl_fn(void *arg)
+{
+	struct fm_sdl_state *fm = arg;
+
+	/* Init the SDL screen */
+	fm_scr_init(&state_sdl);
+
+	while (! do_exit) {
+		safe_cond_wait(&fm->ready, &fm->ready_m);
+		/*
+		 * XXX we should copy the data into a separate buffer
+		 * and release the lock /before/ we run the FFT.
+		 */
+		pthread_rwlock_rdlock(&fm->rw);
+		fm_sdl_run(fm);
+		pthread_rwlock_unlock(&fm->rw);
+
+		fm_sdl_display_update(fm);
+	}
+	return (NULL);
 }
 
 static void optimal_settings(int freq, int rate)
@@ -362,6 +392,7 @@ int main(int argc, char **argv)
 	demod_init(&demod, &output);
 	output_init(&output);
 	controller_init(&controller);
+	fm_sdl_init(&state_sdl, 262144);
 
 	while ((opt = getopt(argc, argv, "d:f:g:s:b:l:o:t:r:p:E:F:A:M:h")) != -1) {
 		switch (opt) {
@@ -546,6 +577,7 @@ int main(int argc, char **argv)
 	pthread_create(&output.thread, NULL, output_thread_fn, (void *)(&output));
 	pthread_create(&demod.thread, NULL, demod_thread_fn, (void *)(&demod));
 	pthread_create(&dongle.thread, NULL, dongle_thread_fn, (void *)(&dongle));
+	pthread_create(&state_sdl.thread, NULL, fm_sdl_fn, (void *) &state_sdl);
 
 	while (!do_exit) {
 		usleep(100000);
