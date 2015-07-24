@@ -9,11 +9,11 @@ struct fm_sdl_state {
 
 	int16_t *s_in;	/* incoming samples for fft */
 	int s_n;	/* how many were provided this round */
+	int s_ready;	/* ready to do the actual FFT */
 
 	fftw_complex *fft_in;
 	fftw_complex *fft_out;
 	int nsamples;	/* Number of samples per second */
-	int cur;	/* Current endpoint */
 	fftw_plan fft_p;
 
 	int scr_xsize;

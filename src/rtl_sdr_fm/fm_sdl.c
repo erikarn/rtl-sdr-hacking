@@ -282,7 +282,6 @@ fm_sdl_set_samplerate(struct fm_sdl_state *fs, int n)
 	fs->fft_p = fftw_plan_dft_1d(n, fs->fft_in, fs->fft_out,
 	    FFTW_FORWARD, FFTW_ESTIMATE);
 	fs->nsamples = n;
-	fs->cur = 0;
 
 	pthread_rwlock_unlock(&fs->rw);
 	return (0);
@@ -304,6 +303,15 @@ fm_sdl_init(struct fm_sdl_state *fs)
 	return (0);
 }
 
+/*
+ * Add in samples to the pending queue.
+ *
+ * TODO: we really should just accumulate enough for one FFT window,
+ * run the FFT and then clear the sample set.
+ *
+ * We currently can't do the FFT live, so we end up appending time-series
+ * that isn't immediately following the just processed bits.
+ */
 int
 fm_sdl_update(struct fm_sdl_state *fs, int16_t *s, int n)
 {
@@ -324,9 +332,15 @@ fm_sdl_update(struct fm_sdl_state *fs, int16_t *s, int n)
 
 	pthread_rwlock_wrlock(&fs->rw);
 	for (i = 0; i < n; i++) {
-		fs->s_in[i] = s[i];
+		fs->s_in[fs->s_n] = s[i];
+		fs->s_n++;
+		if (fs->s_n == fs->nsamples)
+			break;
 	}
-	fs->s_n = n;
+
+	/* Signal if we're ready for the FFT bit */
+	if (fs->s_n >= fs->nsamples)
+		fs->s_ready = 1;
 
 	pthread_rwlock_unlock(&fs->rw);
 
@@ -343,42 +357,18 @@ fm_sdl_update_fft_samples(struct fm_sdl_state *fs)
 	if (fs->nsamples == 0)
 		return (-1);
 
-	if (fs->s_n == 0) {
+	if (fs->s_ready == 0)
 		return (-1);
-	}
 
-	/* Shuffle enough samples down to make space for 'num' samples */
-	if (fs->nsamples - fs->cur < num) {
-		int nm;
-
-		nm = num - (fs->nsamples - fs->cur);
-#if 0
-		fprintf(stderr, "%s: nsamples: %d, cur: %d, num=%d, need=%d\n",
-		    __func__,
-		    fs->nsamples,
-		    fs->cur,
-		    num,
-		    nm);
-#endif
-
-		for (i = nm, j = 0; i < fs->cur; i++, j++) {
-			fs->fft_in[j][0] = fs->fft_in[i][0];
-			fs->fft_in[j][1] = fs->fft_in[i][1];
-		}
-		fs->cur -= nm;
-	}
-
-	/* Copy these samples in from cur -> cur + num */
+	/* Copy these samples in */
 	for (i = 0, j = 0; i < num; i++) {
-		fs->fft_in[i + fs->cur][0] = fs->s_in[j++];
-		fs->fft_in[i + fs->cur][1] = fs->s_in[j++];
+		fs->fft_in[i][0] = fs->s_in[j++];
+		fs->fft_in[i][1] = fs->s_in[j++];
 	}
-
-	/* And now update cur */
-	fs->cur += num;
 
 	/* .. now we're done with s_in */
 	fs->s_n = 0;
+	fs->s_ready = 0;
 
 	return (0);
 }

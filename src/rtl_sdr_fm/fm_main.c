@@ -243,13 +243,14 @@ fm_sdl_fn(void *arg)
 
 	while (! do_exit) {
 		safe_cond_wait(&fm->ready, &fm->ready_m);
-		pthread_rwlock_rdlock(&fm->rw);
+		pthread_rwlock_wrlock(&fm->rw);
 		i = fm_sdl_update_fft_samples(fm);
 		pthread_rwlock_unlock(&fm->rw);
 
 		if (i < 0)
 			continue;
 
+		/* Do the actual FFT */
 		fm_sdl_run(fm);
 
 		fm_sdl_display_update(fm);
