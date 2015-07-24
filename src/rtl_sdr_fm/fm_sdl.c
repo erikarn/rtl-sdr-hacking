@@ -62,9 +62,6 @@ draw_signal_line(struct fm_sdl_state *fm)
 	 * Plot a line series for the last 320 elements,
 	 * two pixel wide (640 pixels.)
 	 */
-	curofs = fm->nsamples - 1;
-	if (curofs < 0)
-		curofs = size - 1;
 
 	ys = fm->scr_ysize / 2;
 
@@ -76,6 +73,9 @@ draw_signal_line(struct fm_sdl_state *fm)
 
 	glBegin(GL_LINE_STRIP);
 	glColor3f(1, 1, 0);
+	curofs = fm->nsamples - 1;
+	if (curofs < 0)
+		curofs = size - 1;
 	for (x = 0; x < fm->scr_xsize; x++) {
 		/*
 		 * Y axis is 480 high, so let's split it into
@@ -102,6 +102,40 @@ draw_signal_line(struct fm_sdl_state *fm)
 			break;
 	}
 	glEnd();
+
+	/* and Q */
+	glBegin(GL_LINE_STRIP);
+	glColor3f(1, 0, 1);
+	curofs = fm->nsamples - 1;
+	if (curofs < 0)
+		curofs = size - 1;
+	for (x = 0; x < fm->scr_xsize; x++) {
+		/*
+		 * Y axis is 480 high, so let's split it into
+		 * +/- 240.  The dynamic range of the raw
+		 * values is signed 16-bit value, so scale that.
+		 */
+		y = fm->s_in[(x * 2) + 1];
+
+		y = y * ys / 128;
+		/* Clip */
+		if (y < -ys)
+			y = -ys;
+		else if (y > ys)
+			y = ys;
+
+		/* Set offset to middle of the screen */
+		y += ys;
+
+		glVertex3f(x, y, 0);
+
+		/* Go backwards in samples */
+		curofs--;
+		if (curofs < 0)
+			break;
+	}
+	glEnd();
+
 }
 
 static float
