@@ -113,6 +113,10 @@ draw_fft_data(struct fm_sdl_state *fm)
 	float x, y;
 	int mul = 256;
 
+	/* XXX not locked? */
+	if (fm->nsamples == 0)
+		return;
+
 	/*
 	 * Let's map the +ve FFT frequency domain point
 	 * space into our width (640 pixels.)
@@ -248,14 +252,29 @@ fm_scr_init(struct fm_sdl_state *fs)
 }
 
 int
-fm_sdl_init(struct fm_sdl_state *fs, int n)
+fm_sdl_set_samplerate(struct fm_sdl_state *fs, int n)
 {
 
-	bzero(fs, sizeof(*fs));
+	pthread_rwlock_wrlock(&fs->rw);
+
 	fs->fft_in = fftw_malloc(sizeof(fftw_complex) * n);
 	fs->fft_out = fftw_malloc(sizeof(fftw_complex) * n);
 	fs->fft_p = fftw_plan_dft_1d(n, fs->fft_in, fs->fft_out,
 	    FFTW_FORWARD, FFTW_ESTIMATE);
+	fs->nsamples = n;
+	fs->cur = 0;
+
+	pthread_rwlock_unlock(&fs->rw);
+	return (0);
+
+}
+
+int
+fm_sdl_init(struct fm_sdl_state *fs)
+{
+
+	bzero(fs, sizeof(*fs));
+
 	(void) pthread_rwlock_init(&fs->rw, NULL);
 	(void) pthread_mutex_init(&fs->ready_m, NULL);
 	(void) pthread_cond_init(&fs->ready, NULL);
@@ -266,13 +285,15 @@ fm_sdl_init(struct fm_sdl_state *fs, int n)
 int
 fm_sdl_update(struct fm_sdl_state *fs, int16_t *s, int n)
 {
-	int i, j = 0;
+	int i, j, k;
+	int num = n / 2;
 
-	/* XXX TODO: clip at maximum sample size */
+	if (fs->nsamples == 0)
+		return (-1);
+
 	/*
-	 * XXX TODO: should handle partial buffers based on sampling
-	 * rate, and append to a sample FIFO, so we're doing FFTs on
-	 * full sample sets..
+	 * We receive samples in small chunks; so treat the fft_in[]
+	 * array as a sliding window and move things along as appropriate.
 	 */
 
 	/*
@@ -281,10 +302,37 @@ fm_sdl_update(struct fm_sdl_state *fs, int16_t *s, int n)
 	 */
 
 	pthread_rwlock_wrlock(&fs->rw);
-	for (i = 0; i < n / 2; i++) {
-		fs->fft_in[i][0] = s[j++];
-		fs->fft_in[i][1] = s[j++];
+
+	/* Shuffle enough samples down to make space for 'num' samples */
+	if (fs->nsamples - fs->cur < num) {
+		int nm;
+
+		nm = num - (fs->nsamples - fs->cur);
+#if 0
+		fprintf(stderr, "%s: nsamples: %d, cur: %d, num=%d, need=%d\n",
+		    __func__,
+		    fs->nsamples,
+		    fs->cur,
+		    num,
+		    nm);
+#endif
+
+		for (i = nm, j = 0; i < fs->cur; i++, j++) {
+			fs->fft_in[j][0] = fs->fft_in[i][0];
+			fs->fft_in[j][1] = fs->fft_in[i][1];
+		}
+		fs->cur -= nm;
 	}
+
+	/* Copy these samples in from cur -> cur + num */
+	for (i = 0, j = 0; i < num; i++) {
+		fs->fft_in[i + fs->cur][0] = s[j++];
+		fs->fft_in[i + fs->cur][1] = s[j++];
+	}
+
+	/* And now update cur */
+	fs->cur += num;
+
 	pthread_rwlock_unlock(&fs->rw);
 
 	return (0);
@@ -293,6 +341,9 @@ fm_sdl_update(struct fm_sdl_state *fs, int16_t *s, int n)
 int
 fm_sdl_run(struct fm_sdl_state *fs)
 {
+	/* XXX not locked? */
+	if (fs->nsamples == 0)
+		return (-1);
 
 	/* Run FFT */
 	fftw_execute(fs->fft_p);

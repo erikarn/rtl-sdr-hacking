@@ -9,11 +9,13 @@ struct fm_sdl_state {
 
 	fftw_complex *fft_in;
 	fftw_complex *fft_out;
-	int nsamples;
+	int nsamples;	/* Number of samples per second */
+	int cur;	/* Current endpoint */
 	fftw_plan fft_p;
 };
 
-extern	int fm_sdl_init(struct fm_sdl_state *fs, int n);
+extern	int fm_sdl_init(struct fm_sdl_state *fs);
+extern	int fm_sdl_set_samplerate(struct fm_sdl_state *fs, int n);
 extern	int fm_scr_init(struct fm_sdl_state *fs);
 extern	int fm_sdl_update(struct fm_sdl_state *fs, int16_t *ns, int n);
 extern	int fm_sdl_run(struct fm_sdl_state *fs);

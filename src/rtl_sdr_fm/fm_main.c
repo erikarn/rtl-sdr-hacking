@@ -310,6 +310,10 @@ static void *controller_thread_fn(void *arg)
 
 	/* Set the sample rate */
 	verbose_set_sample_rate(dongle.dev, dongle.rate);
+
+	/* Tell the sdl layer about it */
+	fm_sdl_set_samplerate(&state_sdl, dongle.rate);
+
 	fprintf(stderr, "Output at %u Hz.\n", demod.rate_in/demod.post_downsample);
 
 	while (!do_exit) {
@@ -392,7 +396,8 @@ int main(int argc, char **argv)
 	demod_init(&demod, &output);
 	output_init(&output);
 	controller_init(&controller);
-	fm_sdl_init(&state_sdl, 262144);
+
+	fm_sdl_init(&state_sdl);
 
 	while ((opt = getopt(argc, argv, "d:f:g:s:b:l:o:t:r:p:E:F:A:M:h")) != -1) {
 		switch (opt) {
