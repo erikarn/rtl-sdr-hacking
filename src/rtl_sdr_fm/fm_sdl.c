@@ -109,34 +109,49 @@ fft_mag(float r, float i, float d)
 static void
 draw_fft_data(struct fm_sdl_state *fm)
 {
-	int size, i;
+	int size, i, j;
 	float x, y;
 	int mul = 256;
+	int midpoint;
 
 	/* XXX not locked? */
 	if (fm->nsamples == 0)
 		return;
 
 	/*
-	 * Let's map the +ve FFT frequency domain point
-	 * space into our screen space.
-	 *
-	 * Yes, some sub-pixel rendering will likely occur.
+	 * Map the FFT data into 'xsize', taking into account -ve and +ve
+	 * frequency data (with DC in the middle.)
 	 */
 	glBegin(GL_LINE_STRIP);
-	glColor3f(0, 1, 1);
+	glColor3f(0.0, 1.0, 1.0);
 	size = fm->scr_xsize;
-	/* XXX complete hack; assumes 262144 points; uses mult to scale rather than avg */
+	midpoint = size / 2;
 	/*
-	 * XXX TODO: the fft_out bins are ordered 0..BW/2, then -BW/2..0.
+	 * The fft_out bins are ordered 0..BW/2, then -BW/2..0.
 	 * This should be done for the purposes of the plot!
 	 */
-	for (i = 1; i < size / 2; i++) {
-		x = ((float) i * 640.0 * 2.0) / (float) size;
-		y = fft_mag(fm->fft_out[i*mul][0], fm->fft_out[i*mul][1], 128.0);
+
+	for (i = 0; i < size; i++) {
+		/*
+		 * If we're below midpoint, map 'i' into the -ve space.
+		 * If we're at/above midpoint, map 'i' into the +ve space.
+		 *
+		 * Translate it into the right sample offset for the given
+		 * position.  For now we just skip; we don't try to sum
+		 * entries and plot the average/min/max.
+		 * We should do that later.
+		 */
+		if (i < midpoint)
+			j = (fm->nsamples / 2) + (i * fm->nsamples) / size;
+		else
+			j = ((i - midpoint) * fm->nsamples) / size;
+
+		x = i;
+		y = fft_mag(fm->fft_out[j][0], fm->fft_out[j][1], 128.0);
 		/* y starts at the bottom */
 		y = fm->scr_ysize - y;
 		glVertex3f(x, y, 0);
+
 	}
 	glEnd();
 }
@@ -282,7 +297,7 @@ fm_sdl_init(struct fm_sdl_state *fs)
 	(void) pthread_rwlock_init(&fs->rw, NULL);
 	(void) pthread_mutex_init(&fs->ready_m, NULL);
 	(void) pthread_cond_init(&fs->ready, NULL);
-	fs->scr_xsize = 640;
+	fs->scr_xsize = 800;
 	fs->scr_ysize = 480;
 
 	return (0);
