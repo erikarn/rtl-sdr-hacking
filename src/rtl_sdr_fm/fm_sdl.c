@@ -278,6 +278,7 @@ fm_sdl_set_samplerate(struct fm_sdl_state *fs, int n)
 
 	fs->fft_in = fftw_malloc(sizeof(fftw_complex) * n);
 	fs->fft_out = fftw_malloc(sizeof(fftw_complex) * n);
+	fs->s_in = calloc(n*2, sizeof(int16_t));
 	fs->fft_p = fftw_plan_dft_1d(n, fs->fft_in, fs->fft_out,
 	    FFTW_FORWARD, FFTW_ESTIMATE);
 	fs->nsamples = n;
@@ -297,7 +298,7 @@ fm_sdl_init(struct fm_sdl_state *fs)
 	(void) pthread_rwlock_init(&fs->rw, NULL);
 	(void) pthread_mutex_init(&fs->ready_m, NULL);
 	(void) pthread_cond_init(&fs->ready, NULL);
-	fs->scr_xsize = 800;
+	fs->scr_xsize = 1280;
 	fs->scr_ysize = 480;
 
 	return (0);
@@ -306,8 +307,7 @@ fm_sdl_init(struct fm_sdl_state *fs)
 int
 fm_sdl_update(struct fm_sdl_state *fs, int16_t *s, int n)
 {
-	int i, j, k;
-	int num = n / 2;
+	int i;
 
 	if (fs->nsamples == 0)
 		return (-1);
@@ -323,6 +323,29 @@ fm_sdl_update(struct fm_sdl_state *fs, int16_t *s, int n)
 	 */
 
 	pthread_rwlock_wrlock(&fs->rw);
+	for (i = 0; i < n; i++) {
+		fs->s_in[i] = s[i];
+	}
+	fs->s_n = n;
+
+	pthread_rwlock_unlock(&fs->rw);
+
+	return (0);
+}
+
+int
+fm_sdl_update_fft_samples(struct fm_sdl_state *fs)
+{
+	int i, j, k;
+	int n = fs->s_n;
+	int num = n / 2;
+
+	if (fs->nsamples == 0)
+		return (-1);
+
+	if (fs->s_n == 0) {
+		return (-1);
+	}
 
 	/* Shuffle enough samples down to make space for 'num' samples */
 	if (fs->nsamples - fs->cur < num) {
@@ -347,14 +370,15 @@ fm_sdl_update(struct fm_sdl_state *fs, int16_t *s, int n)
 
 	/* Copy these samples in from cur -> cur + num */
 	for (i = 0, j = 0; i < num; i++) {
-		fs->fft_in[i + fs->cur][0] = s[j++];
-		fs->fft_in[i + fs->cur][1] = s[j++];
+		fs->fft_in[i + fs->cur][0] = fs->s_in[j++];
+		fs->fft_in[i + fs->cur][1] = fs->s_in[j++];
 	}
 
 	/* And now update cur */
 	fs->cur += num;
 
-	pthread_rwlock_unlock(&fs->rw);
+	/* .. now we're done with s_in */
+	fs->s_n = 0;
 
 	return (0);
 }
@@ -362,7 +386,7 @@ fm_sdl_update(struct fm_sdl_state *fs, int16_t *s, int n)
 int
 fm_sdl_run(struct fm_sdl_state *fs)
 {
-	/* XXX not locked? */
+
 	if (fs->nsamples == 0)
 		return (-1);
 

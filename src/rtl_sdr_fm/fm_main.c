@@ -236,19 +236,21 @@ static void *
 fm_sdl_fn(void *arg)
 {
 	struct fm_sdl_state *fm = arg;
+	int i;
 
 	/* Init the SDL screen */
 	fm_scr_init(&state_sdl);
 
 	while (! do_exit) {
 		safe_cond_wait(&fm->ready, &fm->ready_m);
-		/*
-		 * XXX we should copy the data into a separate buffer
-		 * and release the lock /before/ we run the FFT.
-		 */
 		pthread_rwlock_rdlock(&fm->rw);
-		fm_sdl_run(fm);
+		i = fm_sdl_update_fft_samples(fm);
 		pthread_rwlock_unlock(&fm->rw);
+
+		if (i < 0)
+			continue;
+
+		fm_sdl_run(fm);
 
 		fm_sdl_display_update(fm);
 	}
