@@ -12,6 +12,9 @@ struct fm_sdl_state {
 	int nsamples;	/* Number of samples per second */
 	int cur;	/* Current endpoint */
 	fftw_plan fft_p;
+
+	int scr_xsize;
+	int scr_ysize;
 };
 
 extern	int fm_sdl_init(struct fm_sdl_state *fs);

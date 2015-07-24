@@ -119,13 +119,13 @@ draw_fft_data(struct fm_sdl_state *fm)
 
 	/*
 	 * Let's map the +ve FFT frequency domain point
-	 * space into our width (640 pixels.)
+	 * space into our screen space.
 	 *
 	 * Yes, some sub-pixel rendering will likely occur.
 	 */
 	glBegin(GL_LINE_STRIP);
 	glColor3f(0, 1, 1);
-	size = 640;
+	size = fm->scr_xsize;
 	/* XXX complete hack; assumes 262144 points; uses mult to scale rather than avg */
 	/*
 	 * XXX TODO: the fft_out bins are ordered 0..BW/2, then -BW/2..0.
@@ -135,7 +135,7 @@ draw_fft_data(struct fm_sdl_state *fm)
 		x = ((float) i * 640.0 * 2.0) / (float) size;
 		y = fft_mag(fm->fft_out[i*mul][0], fm->fft_out[i*mul][1], 128.0);
 		/* y starts at the bottom */
-		y = 480 - y;
+		y = fm->scr_ysize - y;
 		glVertex3f(x, y, 0);
 	}
 	glEnd();
@@ -224,12 +224,16 @@ fm_scr_init(struct fm_sdl_state *fs)
 	return 0;
 	}
 
+	fprintf(stderr, "%s: screen=%dx%d\n", __func__,
+	    fs->scr_xsize,
+	    fs->scr_ysize);
+
 	SDL_GL_SetAttribute(SDL_GL_RED_SIZE,            5);
 	SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE,          5);
 	SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE,           5);
 	SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE,          16);
 
-	if (SDL_SetVideoMode(640, 480, 15,
+	if (SDL_SetVideoMode(fs->scr_xsize, fs->scr_ysize, 15,
 	    SDL_HWSURFACE | SDL_GL_DOUBLEBUFFER | SDL_OPENGL) == NULL) {
 		printf("SDL_SetVideoMode failed: %s\n", SDL_GetError());
 		return 0;
@@ -237,12 +241,12 @@ fm_scr_init(struct fm_sdl_state *fs)
 
 	glClearColor(0, 0, 0, 0);
 
-	glViewport(0, 0, 640, 480);
+	glViewport(0, 0, fs->scr_xsize, fs->scr_ysize);
 
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
 
-	glOrtho(0, 640, 480, 0, 1, -1);
+	glOrtho(0, fs->scr_xsize, fs->scr_ysize, 0, 1, -1);
 
 	glMatrixMode(GL_MODELVIEW);
 	glEnable(GL_TEXTURE_2D);
@@ -278,6 +282,8 @@ fm_sdl_init(struct fm_sdl_state *fs)
 	(void) pthread_rwlock_init(&fs->rw, NULL);
 	(void) pthread_mutex_init(&fs->ready_m, NULL);
 	(void) pthread_cond_init(&fs->ready, NULL);
+	fs->scr_xsize = 640;
+	fs->scr_ysize = 480;
 
 	return (0);
 }
