@@ -47,55 +47,62 @@ process_events(void)
 	}
 }
 
-#if 0
 /*
  * Draw just the raw signal line - signal in the time domain.
  */
 static void
-draw_signal_line(struct mw_app *app)
+draw_signal_line(struct fm_sdl_state *fm)
 {
 	int x, y;
 	int curofs;
 	int size;
+	int ys;
 
 	/*
 	 * Plot a line series for the last 320 elements,
 	 * two pixel wide (640 pixels.)
 	 */
-	curofs = app->mw->raw_samples.offset - 1;
-	size = app->mw->raw_samples.len;
+	curofs = fm->nsamples - 1;
 	if (curofs < 0)
 		curofs = size - 1;
 
+	ys = fm->scr_ysize / 2;
+
+	glBegin(GL_LINE_STRIP);
+	glColor3f(1, 0, 0);
+	glVertex3f(0, ys, 0);
+	glVertex3f(fm->scr_xsize, ys, 0);
+	glEnd();
+
 	glBegin(GL_LINE_STRIP);
 	glColor3f(1, 1, 0);
-	for (x = 0; x < 320; x++) {
+	for (x = 0; x < fm->scr_xsize; x++) {
 		/*
 		 * Y axis is 480 high, so let's split it into
 		 * +/- 240.  The dynamic range of the raw
 		 * values is signed 16-bit value, so scale that.
 		 */
-		y = app->mw->raw_samples.s[curofs].sample;
-		y = y * 240 / 1024;
+		y = fm->s_in[x * 2];
 
+		y = y * ys / 128;
 		/* Clip */
-		if (y < -240)
-			y = -240;
-		else if (y > 240)
-			y = 240;
+		if (y < -ys)
+			y = -ys;
+		else if (y > ys)
+			y = ys;
 
 		/* Set offset to middle of the screen */
-		y += 240;
+		y += ys;
+
+		glVertex3f(x, y, 0);
 
 		/* Go backwards in samples */
 		curofs--;
 		if (curofs < 0)
-			curofs = size - 1;
-		glVertex3f(x * 2, y, 0);
+			break;
 	}
 	glEnd();
 }
-#endif
 
 static float
 fft_mag(float r, float i, float d)
@@ -148,6 +155,8 @@ draw_fft_data(struct fm_sdl_state *fm)
 
 		x = i;
 		y = fft_mag(fm->fft_out[j][0], fm->fft_out[j][1], 128.0);
+		if (i == midpoint)
+			fprintf(stderr, "DC: %f, %f/%f\n", y, fm->fft_out[j][0], fm->fft_out[j][1]);
 		/* y starts at the bottom */
 		y = fm->scr_ysize - y;
 		glVertex3f(x, y, 0);
@@ -222,9 +231,7 @@ fm_sdl_display_update(struct fm_sdl_state *fm)
     glEnd();
 #endif
 
-#if 0
-	draw_signal_line(app);
-#endif
+	draw_signal_line(fm);
 	draw_fft_data(fm);
 
 	/* This waits for vertical refresh before flipping, so it sleeps */
