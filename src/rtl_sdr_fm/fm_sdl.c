@@ -180,7 +180,7 @@ draw_fft_data(struct fm_sdl_state *fm)
 			j = ((i - midpoint) * fm->nsamples) / size;
 
 		x = i;
-		y = fft_mag(fm->fft_out[j][0], fm->fft_out[j][1], 128.0);
+		y = fft_mag(fm->fft_out[j][0], fm->fft_out[j][1], 256.0);
 		if (i == midpoint)
 			fprintf(stderr, "DC: %f, %f/%f\n", y, fm->fft_out[j][0], fm->fft_out[j][1]);
 		/* y starts at the bottom */
@@ -402,7 +402,7 @@ fm_sdl_update_fft_samples(struct fm_sdl_state *fs)
 	if (fs->s_ready == 0)
 		return (-1);
 
-#if 0
+#if 1
 	fprintf(stderr, "%s: ready; nsamples=%d, s_n=%d\n",
 	    __func__,
 	    fs->nsamples,

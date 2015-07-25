@@ -11,7 +11,7 @@ struct dongle_state
         uint32_t freq;
         uint32_t rate;
         int      gain;
-        uint16_t buf16[MAXIMUM_BUF_LENGTH];
+        int16_t buf16[MAXIMUM_BUF_LENGTH];
         uint32_t buf_len;
         int      ppm_error;
         int      offset_tuning;

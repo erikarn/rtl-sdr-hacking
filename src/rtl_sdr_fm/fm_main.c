@@ -157,6 +157,38 @@ static void sighandler(int signum)
 #define safe_cond_signal(n, m) pthread_mutex_lock(m); pthread_cond_signal(n); pthread_mutex_unlock(m)
 #define safe_cond_wait(n, m) pthread_mutex_lock(m); pthread_cond_wait(n, m); pthread_mutex_unlock(m)
 
+void remove_dc(int16_t *data, int length)
+{
+	int i;
+	int16_t avg_i, avg_q;
+	long long sum_i, sum_q;
+
+	sum_i = sum_q = 0LL;
+
+	for (i = 0; i < length; i += 2) {
+		sum_i += data[i];
+		sum_q += data[i+1];
+	}
+
+	avg_i = (int16_t)(sum_i / (long long) (length/2));
+	avg_q = (int16_t)(sum_q / (long long) (length/2));
+
+	/* shortcut if they're both 0 */
+	if (avg_i == 0 && avg_q == 0)
+		return;
+
+	fprintf(stderr, "%s: avg_i=%d, avg_q=%d\n",
+	    __func__,
+	    (int) avg_i,
+	    (int) avg_q);
+
+
+	for (i = 0; i < length; i += 2) {
+		data[i] -= avg_i;
+		data[i+1] -= avg_q;
+	}
+}
+
 static void rtlsdr_callback(unsigned char *buf, uint32_t len, void *ctx)
 {
 	int i;
@@ -172,10 +204,19 @@ static void rtlsdr_callback(unsigned char *buf, uint32_t len, void *ctx)
 			buf[i] = 127;}
 		s->mute = 0;
 	}
+
 	if (!s->offset_tuning) {
 		rotate_90(buf, len);}
+
+	/* Make signed */
 	for (i=0; i<(int)len; i++) {
-		s->buf16[i] = (int16_t)buf[i] - 127;}
+		s->buf16[i] = buf[i];
+		s->buf16[i] -= 127;
+	}
+
+	/* DC correct the interleaved data */
+	remove_dc(s->buf16, len);
+
 	pthread_rwlock_wrlock(&d->rw);
 	memcpy(d->lowpassed, s->buf16, 2*len);
 	d->lp_len = len;
