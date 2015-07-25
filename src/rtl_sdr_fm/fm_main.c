@@ -205,14 +205,15 @@ static void rtlsdr_callback(unsigned char *buf, uint32_t len, void *ctx)
 		s->mute = 0;
 	}
 
-	if (!s->offset_tuning) {
-		rotate_90(buf, len);}
-
 	/* Make signed */
 	for (i=0; i<(int)len; i++) {
 		s->buf16[i] = buf[i];
 		s->buf16[i] -= 127;
 	}
+
+	/* Rotate if required */
+	if (!s->offset_tuning) {
+		rotate_90(s->buf16, len);}
 
 	/* DC correct the interleaved data */
 	remove_dc(s->buf16, len);

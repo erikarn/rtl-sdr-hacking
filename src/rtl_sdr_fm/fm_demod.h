@@ -37,7 +37,7 @@ struct demod_state
 	struct output_state *output_target;
 };
 
-extern	void rotate_90(unsigned char *buf, uint32_t len);
+extern	void rotate_90(int16_t *buf, uint32_t len);
 extern	void full_demod(struct demod_state *d);
 extern	void demod_init(struct demod_state *s, struct output_state *o);
 extern	void demod_cleanup(struct demod_state *s);
