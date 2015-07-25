@@ -53,7 +53,7 @@ process_events(void)
 static void
 draw_signal_line(struct fm_sdl_state *fm)
 {
-	int x, y;
+	int x, y, o;
 	int curofs;
 	int size;
 	int ys;
@@ -77,12 +77,8 @@ draw_signal_line(struct fm_sdl_state *fm)
 	if (curofs < 0)
 		curofs = size - 1;
 	for (x = 0; x < fm->scr_xsize; x++) {
-		/*
-		 * Y axis is 480 high, so let's split it into
-		 * +/- 240.  The dynamic range of the raw
-		 * values is signed 16-bit value, so scale that.
-		 */
-		y = fm->s_in[x * 2];
+		o = (x * fm->nsamples) / fm->scr_xsize;
+		y = fm->fft_in[o][0];
 
 		y = y * ys / 128;
 		/* Clip */
@@ -110,12 +106,8 @@ draw_signal_line(struct fm_sdl_state *fm)
 	if (curofs < 0)
 		curofs = size - 1;
 	for (x = 0; x < fm->scr_xsize; x++) {
-		/*
-		 * Y axis is 480 high, so let's split it into
-		 * +/- 240.  The dynamic range of the raw
-		 * values is signed 16-bit value, so scale that.
-		 */
-		y = fm->s_in[(x * 2) + 1];
+		o = (x * fm->nsamples) / fm->scr_xsize;
+		y = fm->fft_in[o][1];
 
 		y = y * ys / 128;
 		/* Clip */
@@ -375,12 +367,20 @@ fm_sdl_update(struct fm_sdl_state *fs, int16_t *s, int n)
 	for (i = 0; i < n; i++) {
 		fs->s_in[fs->s_n] = s[i];
 		fs->s_n++;
-		if (fs->s_n == fs->nsamples)
+		if (fs->s_n == fs->nsamples * 2)
 			break;
 	}
 
+#if 0
+	fprintf(stderr, "%s: n=%d, nsamples=%d, s_n=%d\n",
+	    __func__,
+	    n,
+	    fs->nsamples,
+	    fs->s_n);
+#endif
+
 	/* Signal if we're ready for the FFT bit */
-	if (fs->s_n >= fs->nsamples)
+	if (fs->s_n >= fs->nsamples * 2)
 		fs->s_ready = 1;
 
 	pthread_rwlock_unlock(&fs->rw);
@@ -388,12 +388,13 @@ fm_sdl_update(struct fm_sdl_state *fs, int16_t *s, int n)
 	return (0);
 }
 
+/*
+ * Called with write lock held.
+ */
 int
 fm_sdl_update_fft_samples(struct fm_sdl_state *fs)
 {
 	int i, j, k;
-	int n = fs->s_n;
-	int num = n / 2;
 
 	if (fs->nsamples == 0)
 		return (-1);
@@ -401,8 +402,15 @@ fm_sdl_update_fft_samples(struct fm_sdl_state *fs)
 	if (fs->s_ready == 0)
 		return (-1);
 
+#if 0
+	fprintf(stderr, "%s: ready; nsamples=%d, s_n=%d\n",
+	    __func__,
+	    fs->nsamples,
+	    fs->s_n);
+#endif
+
 	/* Copy these samples in */
-	for (i = 0, j = 0; i < num; i++) {
+	for (i = 0, j = 0; i < fs->s_n / 2; i++) {
 		fs->fft_in[i][0] = fs->s_in[j++];
 		fs->fft_in[i][1] = fs->s_in[j++];
 	}
@@ -414,6 +422,10 @@ fm_sdl_update_fft_samples(struct fm_sdl_state *fs)
 	return (0);
 }
 
+/*
+ * XXX TODO: should have a separate rw lock
+ * protecting fft_in[].
+ */
 int
 fm_sdl_run(struct fm_sdl_state *fs)
 {
