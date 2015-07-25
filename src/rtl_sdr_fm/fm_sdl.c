@@ -181,8 +181,10 @@ draw_fft_data(struct fm_sdl_state *fm)
 
 		x = i;
 		y = fft_mag(fm->fft_out[j][0], fm->fft_out[j][1], 256.0);
+#if 0
 		if (i == midpoint)
 			fprintf(stderr, "DC: %f, %f/%f\n", y, fm->fft_out[j][0], fm->fft_out[j][1]);
+#endif
 		/* y starts at the bottom */
 		y = fm->scr_ysize - y;
 		glVertex3f(x, y, 0);
@@ -402,7 +404,7 @@ fm_sdl_update_fft_samples(struct fm_sdl_state *fs)
 	if (fs->s_ready == 0)
 		return (-1);
 
-#if 1
+#if 0
 	fprintf(stderr, "%s: ready; nsamples=%d, s_n=%d\n",
 	    __func__,
 	    fs->nsamples,
