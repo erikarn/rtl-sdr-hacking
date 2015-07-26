@@ -152,6 +152,12 @@ draw_fft_data(struct fm_sdl_state *fm)
 	if (fm->nsamples == 0)
 		return;
 
+	glBegin(GL_LINE_STRIP);
+	glColor3f(1.0, 0.0, 0.0);
+	glVertex3f(fm->scr_xsize / 2, 0, 0);
+	glVertex3f(fm->scr_xsize / 2, fm->scr_ysize, 0);
+	glEnd();
+
 	/*
 	 * Map the FFT data into 'xsize', taking into account -ve and +ve
 	 * frequency data (with DC in the middle.)
