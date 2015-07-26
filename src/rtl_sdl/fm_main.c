@@ -340,7 +340,7 @@ int main(int argc, char **argv)
 	int custom_ppm = 0;
 
 	dongle_init(&dongle);
-	dongle.rate = 3072000;
+	dongle.rate = 2048000;
 	controller_init(&controller);
 
 	fm_sdl_init(&state_sdl);
