@@ -180,8 +180,14 @@ draw_fft_data(struct fm_sdl_state *fm)
 		else
 			j = ((i - midpoint) * fm->nsamples) / size;
 
+
 		x = i;
 		y = fft_mag(fm->fft_out[j][0], fm->fft_out[j][1], 256.0);
+
+		/* DC filter */
+		if (i == midpoint)
+			y = 0.0;
+
 #if 0
 		if (i == midpoint)
 			fprintf(stderr, "DC: %f, %f/%f\n", y, fm->fft_out[j][0], fm->fft_out[j][1]);
