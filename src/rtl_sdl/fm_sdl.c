@@ -282,22 +282,36 @@ fm_sdl_display_update(struct fm_sdl_state *fm)
 int
 fm_scr_init(struct fm_sdl_state *fs)
 {
+	const SDL_VideoInfo *info = NULL;
+	int bpp, flags;
+
 	if (SDL_Init(SDL_INIT_VIDEO) < 0) {
 		printf("SDL_Init failed: %s\n", SDL_GetError());
 	return 0;
 	}
 
+	info = SDL_GetVideoInfo();
+	if (info == NULL) {
+		fprintf(stderr,"SDL_GetVideoInfo failed: %s\n", SDL_GetError());
+		return (0);
+	}
+	bpp = info->vfmt->BitsPerPixel;
+
 	fprintf(stderr, "%s: screen=%dx%d\n", __func__,
 	    fs->scr_xsize,
 	    fs->scr_ysize);
+
 
 	SDL_GL_SetAttribute(SDL_GL_RED_SIZE,            5);
 	SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE,          5);
 	SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE,           5);
 	SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE,          16);
+	SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER,	1);
 
-	if (SDL_SetVideoMode(fs->scr_xsize, fs->scr_ysize, 15,
-	    SDL_HWSURFACE | SDL_GL_DOUBLEBUFFER | SDL_OPENGL) == NULL) {
+	/* XXX no SDL_HWSURFACE, SDL_GL_DOUBLEBUFFER? */
+	flags = SDL_OPENGL | SDL_HWSURFACE | SDL_ANYFORMAT;
+
+	if (SDL_SetVideoMode(fs->scr_xsize, fs->scr_ysize, bpp, flags) == NULL) {
 		printf("SDL_SetVideoMode failed: %s\n", SDL_GetError());
 		return 0;
 	}
@@ -314,6 +328,7 @@ fm_scr_init(struct fm_sdl_state *fs)
 	glMatrixMode(GL_MODELVIEW);
 	glEnable(GL_TEXTURE_2D);
 	glLoadIdentity();
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	return 1;
 }
@@ -345,7 +360,7 @@ fm_sdl_init(struct fm_sdl_state *fs)
 	(void) pthread_rwlock_init(&fs->rw, NULL);
 	(void) pthread_mutex_init(&fs->ready_m, NULL);
 	(void) pthread_cond_init(&fs->ready, NULL);
-	fs->scr_xsize = 1280;
+	fs->scr_xsize = 1200;
 	fs->scr_ysize = 480;
 
 	return (0);
