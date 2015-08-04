@@ -27,13 +27,15 @@ quit_tutorial(int code)
 	exit(code);
 }
 
-static void
-process_events(void)
+/*
+ * Called by the UI thread - call it without locks held.
+ */
+void
+fm_sdl_process_events(struct fm_sdl_state *fm)
 {
 	SDL_Event event;
 
 	while(SDL_PollEvent(&event)) {
-
 		switch(event.type) {
 //		case SDL_KEYDOWN:
 //			/* Handle key presses. */
@@ -242,7 +244,6 @@ void
 fm_sdl_display_update(struct fm_sdl_state *fm)
 {
 
-	process_events();
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glLoadIdentity();
 

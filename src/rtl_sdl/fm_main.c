@@ -194,11 +194,20 @@ fm_sdl_fn(void *arg)
 	struct fm_sdl_state *fm = arg;
 	int i;
 
-	/* Init the SDL screen */
+	/* Init the SDL/OpenGL screen */
 	fm_scr_init(&state_sdl);
 
 	while (! do_exit) {
+		/* Handle events */
+		fm_sdl_process_events(fm);
+
+		/* XXX TODO: handle said events */
+
+		/* Wait for another update to the fft state */
+		/* XXX TODO: this can block UI events, sigh, should fix that */
 		safe_cond_wait(&fm->ready, &fm->ready_m);
+
+		/* Ok - we have an update; let's get FFT results */
 		pthread_rwlock_wrlock(&fm->rw);
 		i = fm_sdl_update_fft_samples(fm);
 		pthread_rwlock_unlock(&fm->rw);
@@ -209,6 +218,7 @@ fm_sdl_fn(void *arg)
 		/* Do the actual FFT */
 		fm_sdl_run(fm);
 
+		/* Display update */
 		fm_sdl_display_update(fm);
 	}
 	return (NULL);
