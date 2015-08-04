@@ -242,65 +242,11 @@ fm_sdl_display_update(struct fm_sdl_state *fm)
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glLoadIdentity();
 
-    /*
-     * let's draw three strips, for quality, attention and meditation
-     */
-
-#if 0
-    /* Quality */
-    glBegin(GL_QUADS);
-     glColor3f(1, 0, 0);
-     glVertex3f(0, 480, 0);
-     glVertex3f(50, 480, 0);
-     glVertex3f(50, 480 - app->quality, 0);
-     glVertex3f(0, 480 - app->quality, 0);
-    glEnd();
-    glBegin(GL_LINE_STRIP);
-     glColor3f(1, 1, 1);
-     glVertex3f(0, 480, 0);
-     glVertex3f(50, 480, 0);
-     glVertex3f(50, 480 - 200, 0);
-     glVertex3f(0, 480 - 200, 0);
-     glVertex3f(0, 480, 0);
-    glEnd();
-
-    /* Meditation */
-    glBegin(GL_QUADS);
-     glColor3f(0, 1, 0);
-     glVertex3f(100, 480, 0);
-     glVertex3f(150, 480, 0);
-     glVertex3f(150, 480 - app->meditation, 0);
-     glVertex3f(100, 480 - app->meditation, 0);
-    glEnd();
-    glBegin(GL_LINE_STRIP);
-     glColor3f(1, 1, 1);
-     glVertex3f(100, 480, 0);
-     glVertex3f(150, 480, 0);
-     glVertex3f(150, 480 - 100, 0);
-     glVertex3f(100, 480 - 100, 0);
-     glVertex3f(100, 480, 0);
-    glEnd();
-
-    /* Attention */
-    glBegin(GL_QUADS);
-     glColor3f(0, 0, 1);
-     glVertex3f(200, 480, 0);
-     glVertex3f(250, 480, 0);
-     glVertex3f(250, 480 - app->attention, 0);
-     glVertex3f(200, 480 - app->attention, 0);
-    glEnd();
-    glBegin(GL_LINE_STRIP);
-     glColor3f(1, 1, 1);
-     glVertex3f(200, 480, 0);
-     glVertex3f(250, 480, 0);
-     glVertex3f(250, 480 - 100, 0);
-     glVertex3f(200, 480 - 100, 0);
-     glVertex3f(200, 480, 0);
-    glEnd();
-#endif
 
 //	draw_signal_line(fm);
+#if 0
 	draw_fft_data(fm);
+#endif
 
 	/* This waits for vertical refresh before flipping, so it sleeps */
 	SDL_GL_SwapBuffers();
@@ -366,11 +312,18 @@ fm_sdl_set_samplerate(struct fm_sdl_state *fs, int n)
 
 	pthread_rwlock_wrlock(&fs->rw);
 
+	/*
+	 * For now, the FFT is hard-coded to 1024 points.
+	 */
+	fs->fft_npoints = 1024;
 	fs->fft_in = fftw_malloc(sizeof(fftw_complex) * n);
 	fs->fft_out = fftw_malloc(sizeof(fftw_complex) * n);
+	fs->fft_p = fftw_plan_dft_1d(fs->fft_npoints, fs->fft_in,
+	    fs->fft_out, FFTW_FORWARD, FFTW_ESTIMATE);
+	fs->fft_db = calloc(n, sizeof(int));
+
+	/* However, s_in is the size of our sample rate */
 	fs->s_in = calloc(n*2, sizeof(int16_t));
-	fs->fft_p = fftw_plan_dft_1d(n, fs->fft_in, fs->fft_out,
-	    FFTW_FORWARD, FFTW_ESTIMATE);
 	fs->nsamples = n;
 
 	pthread_rwlock_unlock(&fs->rw);
@@ -395,18 +348,14 @@ fm_sdl_init(struct fm_sdl_state *fs)
 
 /*
  * Add in samples to the pending queue.
- *
- * TODO: we really should just accumulate enough for one FFT window,
- * run the FFT and then clear the sample set.
- *
- * We currently can't do the FFT live, so we end up appending time-series
- * that isn't immediately following the just processed bits.
  */
 int
 fm_sdl_update(struct fm_sdl_state *fs, int16_t *s, int n)
 {
 	int i;
 
+	/* Run too early? */
+	/* XXX locking? */
 	if (fs->nsamples == 0)
 		return (-1);
 
@@ -436,9 +385,11 @@ fm_sdl_update(struct fm_sdl_state *fs, int16_t *s, int n)
 	    fs->s_n);
 #endif
 
+#if 0
 	/* Signal if we're ready for the FFT bit */
 	if (fs->s_n >= fs->nsamples * 2)
 		fs->s_ready = 1;
+#endif
 
 	pthread_rwlock_unlock(&fs->rw);
 
@@ -453,6 +404,7 @@ fm_sdl_update_fft_samples(struct fm_sdl_state *fs)
 {
 	int i, j, k;
 
+#if 0
 	if (fs->nsamples == 0)
 		return (-1);
 
@@ -475,7 +427,7 @@ fm_sdl_update_fft_samples(struct fm_sdl_state *fs)
 	/* .. now we're done with s_in */
 	fs->s_n = 0;
 	fs->s_ready = 0;
-
+#endif
 	return (0);
 }
 
@@ -487,10 +439,13 @@ int
 fm_sdl_run(struct fm_sdl_state *fs)
 {
 
+#if 0
 	if (fs->nsamples == 0)
 		return (-1);
 
 	/* Run FFT */
 	fftw_execute(fs->fft_p);
+#endif
+
 	return (0);
 }

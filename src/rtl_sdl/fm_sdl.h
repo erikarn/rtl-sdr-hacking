@@ -7,14 +7,15 @@ struct fm_sdl_state {
 	pthread_mutex_t ready_m;
 	pthread_t thread;
 
-	int16_t *s_in;	/* incoming samples for fft */
-	int s_n;	/* how many were provided this round */
-	int s_ready;	/* ready to do the actual FFT */
+	int nsamples;	/* Number of samples per second */
+	int16_t *s_in;	/* incoming samples for fft - we keep up to a second */
+	int s_n;	/* how far into the array are we, in samples */
 
+	int fft_npoints;	/* how big is this FFT? */
 	fftw_complex *fft_in;
 	fftw_complex *fft_out;
-	int nsamples;	/* Number of samples per second */
 	fftw_plan fft_p;
+	int *fft_db;		/* fft result, converted to dB */
 
 	int scr_xsize;
 	int scr_ysize;
