@@ -10,6 +10,7 @@ struct fm_sdl_state {
 	int nsamples;	/* Number of samples per second */
 	int16_t *s_in;	/* incoming samples for fft - we keep up to a second */
 	int s_n;	/* how far into the array are we, in samples */
+	int s_ready;	/* XXX temp hack */
 
 	int fft_npoints;	/* how big is this FFT? */
 	fftw_complex *fft_in;

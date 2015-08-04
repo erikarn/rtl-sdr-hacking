@@ -138,14 +138,15 @@ fft_mag(float r, float i)
 }
 
 static int
-bin_to_idx(int i, int nsamples, int midpoint, int size)
+bin_to_idx(int i, int nsamples, int midpoint)
 {
 	int j;
 
+	/* XXX TODO: simplify */
 	if (i < midpoint)
-	    j = (nsamples / 2) + (i * nsamples) / size;
+	    j = (nsamples / 2) + (i * nsamples) / nsamples;
 	else
-	   j = ((i - midpoint) * nsamples) / size;
+	   j = (i - midpoint);
 	return (j);
 }
 
@@ -155,7 +156,7 @@ bin_to_idx(int i, int nsamples, int midpoint, int size)
 static void
 draw_fft_data(struct fm_sdl_state *fm)
 {
-	int size, i, j;
+	int i, j;
 	double dbm;
 	float x, y;
 	int mul = 256;
@@ -177,14 +178,13 @@ draw_fft_data(struct fm_sdl_state *fm)
 	 */
 	glBegin(GL_LINE_STRIP);
 	glColor3f(0.0, 1.0, 1.0);
-	size = fm->scr_xsize;
-	midpoint = size / 2;
+	midpoint = fm->fft_npoints / 2;
 
 	/*
 	 * The fft_out bins are ordered 0..BW/2, then -BW/2..0.
 	 * This should be done for the purposes of the plot!
 	 */
-	for (i = 0; i < size; i++) {
+	for (i = 0; i < fm->fft_npoints; i++) {
 		/*
 		 * If we're below midpoint, map 'i' into the -ve space.
 		 * If we're at/above midpoint, map 'i' into the +ve space.
@@ -194,7 +194,7 @@ draw_fft_data(struct fm_sdl_state *fm)
 		 * entries and plot the average/min/max.
 		 * We should do that later.
 		 */
-		j = bin_to_idx(i, fm->nsamples, midpoint, size);
+		j = bin_to_idx(i, fm->fft_npoints, midpoint);
 
 		x = i;
 		dbm = fft_mag(fm->fft_out[j][0], fm->fft_out[j][1]);
@@ -244,9 +244,7 @@ fm_sdl_display_update(struct fm_sdl_state *fm)
 
 
 //	draw_signal_line(fm);
-#if 0
 	draw_fft_data(fm);
-#endif
 
 	/* This waits for vertical refresh before flipping, so it sleeps */
 	SDL_GL_SwapBuffers();
@@ -340,7 +338,7 @@ fm_sdl_init(struct fm_sdl_state *fs)
 	(void) pthread_rwlock_init(&fs->rw, NULL);
 	(void) pthread_mutex_init(&fs->ready_m, NULL);
 	(void) pthread_cond_init(&fs->ready, NULL);
-	fs->scr_xsize = 1200;
+	fs->scr_xsize = 1024;
 	fs->scr_ysize = 480;
 
 	return (0);
@@ -365,16 +363,14 @@ fm_sdl_update(struct fm_sdl_state *fs, int16_t *s, int n)
 	 */
 
 	/*
-	 * s[] is a series of I, Q, I, Q etc samples.
-	 * De-interleave them into the required FFT format.
+	 * Copy the data into our incoming area.
+	 * Overwrite what's currently there.
 	 */
-
 	pthread_rwlock_wrlock(&fs->rw);
+	fs->s_n = 0;
 	for (i = 0; i < n; i++) {
 		fs->s_in[fs->s_n] = s[i];
 		fs->s_n++;
-		if (fs->s_n == fs->nsamples * 2)
-			break;
 	}
 
 #if 0
@@ -390,6 +386,7 @@ fm_sdl_update(struct fm_sdl_state *fs, int16_t *s, int n)
 	if (fs->s_n >= fs->nsamples * 2)
 		fs->s_ready = 1;
 #endif
+	fs->s_ready = 1;
 
 	pthread_rwlock_unlock(&fs->rw);
 
@@ -404,7 +401,6 @@ fm_sdl_update_fft_samples(struct fm_sdl_state *fs)
 {
 	int i, j, k;
 
-#if 0
 	if (fs->nsamples == 0)
 		return (-1);
 
@@ -419,7 +415,8 @@ fm_sdl_update_fft_samples(struct fm_sdl_state *fs)
 #endif
 
 	/* Copy these samples in */
-	for (i = 0, j = 0; i < fs->s_n / 2; i++) {
+	/* XXX assumes we have enough! */
+	for (i = 0, j = 0; i < fs->fft_npoints; i++) {
 		fs->fft_in[i][0] = fs->s_in[j++];
 		fs->fft_in[i][1] = fs->s_in[j++];
 	}
@@ -427,7 +424,6 @@ fm_sdl_update_fft_samples(struct fm_sdl_state *fs)
 	/* .. now we're done with s_in */
 	fs->s_n = 0;
 	fs->s_ready = 0;
-#endif
 	return (0);
 }
 
@@ -439,13 +435,11 @@ int
 fm_sdl_run(struct fm_sdl_state *fs)
 {
 
-#if 0
 	if (fs->nsamples == 0)
 		return (-1);
 
 	/* Run FFT */
 	fftw_execute(fs->fft_p);
-#endif
 
 	return (0);
 }
