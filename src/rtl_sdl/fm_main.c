@@ -23,8 +23,6 @@
 
 int do_exit = 0;
 
-static int lcm_post[17] = {1,1,1,3,1,5,3,7,1,9,5,11,3,13,7,15,1};
-
 struct controller_state
 {
 	int      exit_flag;
