@@ -229,7 +229,7 @@ draw_fft_data(struct fm_sdl_state *fm)
 		glVertex3f(x, y, 0);
 
 	}
-	fprintf(stderr, " %f\n", dbm);
+	//fprintf(stderr, " %f\n", dbm);
 	glEnd();
 }
 
@@ -443,4 +443,13 @@ fm_sdl_run(struct fm_sdl_state *fs)
 	fftw_execute(fs->fft_p);
 
 	return (0);
+}
+
+void
+fm_sdl_set_freq_centre(struct fm_sdl_state *fs, float freq)
+{
+
+	pthread_rwlock_wrlock(&fs->rw);
+	fs->freq_centre = freq;
+	pthread_rwlock_unlock(&fs->rw);
 }
