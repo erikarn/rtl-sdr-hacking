@@ -237,11 +237,9 @@ void
 fm_sdl_display_update(struct fm_sdl_state *fm)
 {
 
-    process_events();
-
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    glLoadIdentity();
-
+	process_events();
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glLoadIdentity();
 
 //	draw_signal_line(fm);
 	draw_fft_data(fm);
