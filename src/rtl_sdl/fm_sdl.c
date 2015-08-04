@@ -132,9 +132,21 @@ draw_signal_line(struct fm_sdl_state *fm)
 }
 
 static float
-fft_mag(float r, float i, float d)
+fft_mag(float r, float i)
 {
-	return (sqrtf(r*r + i*i) / d);
+	return (sqrtf(r*r + i*i));
+}
+
+static int
+bin_to_idx(int i, int nsamples, int midpoint, int size)
+{
+	int j;
+
+	if (i < midpoint)
+	    j = (nsamples / 2) + (i * nsamples) / size;
+	else
+	   j = ((i - midpoint) * nsamples) / size;
+	return (j);
 }
 
 /*
@@ -144,6 +156,7 @@ static void
 draw_fft_data(struct fm_sdl_state *fm)
 {
 	int size, i, j;
+	double dbm;
 	float x, y;
 	int mul = 256;
 	int midpoint;
@@ -166,11 +179,11 @@ draw_fft_data(struct fm_sdl_state *fm)
 	glColor3f(0.0, 1.0, 1.0);
 	size = fm->scr_xsize;
 	midpoint = size / 2;
+
 	/*
 	 * The fft_out bins are ordered 0..BW/2, then -BW/2..0.
 	 * This should be done for the purposes of the plot!
 	 */
-
 	for (i = 0; i < size; i++) {
 		/*
 		 * If we're below midpoint, map 'i' into the -ve space.
@@ -181,28 +194,42 @@ draw_fft_data(struct fm_sdl_state *fm)
 		 * entries and plot the average/min/max.
 		 * We should do that later.
 		 */
-		if (i < midpoint)
-			j = (fm->nsamples / 2) + (i * fm->nsamples) / size;
-		else
-			j = ((i - midpoint) * fm->nsamples) / size;
-
+		j = bin_to_idx(i, fm->nsamples, midpoint, size);
 
 		x = i;
-		y = fft_mag(fm->fft_out[j][0], fm->fft_out[j][1], 256.0);
+		dbm = fft_mag(fm->fft_out[j][0], fm->fft_out[j][1]);
 
 		/* DC filter */
 		if (i == midpoint)
-			y = 0.0;
+			dbm = fft_mag(fm->fft_out[j+1][0], fm->fft_out[j+1][1]);
 
 #if 0
 		if (i == midpoint)
 			fprintf(stderr, "DC: %f, %f/%f\n", y, fm->fft_out[j][0], fm->fft_out[j][1]);
 #endif
-		/* y starts at the bottom */
-		y = fm->scr_ysize - y;
+
+		/* Convert to dB, totally non-legit */
+		/* XXX rtl_power.c does /rate, /samples; not sure exactly what .. */
+		dbm /= fm->nsamples;
+		dbm = 10 * log10(dbm);
+
+		/* it's in dB, and that's small, so scale it up a little to see */
+		y = dbm * 4;
+
+		/* y is now in dBm, so scale/invert it appropriately */
+		/* XXX hard-coded hack */
+		y = fm->scr_ysize/2 - y;
+
+		/* hard-clip */
+		if (y > fm->scr_ysize)
+			y = fm->scr_ysize;
+		if (y < 0)
+			y = 0;
+
 		glVertex3f(x, y, 0);
 
 	}
+	fprintf(stderr, " %f\n", dbm);
 	glEnd();
 }
 
@@ -272,7 +299,7 @@ fm_sdl_display_update(struct fm_sdl_state *fm)
     glEnd();
 #endif
 
-	draw_signal_line(fm);
+//	draw_signal_line(fm);
 	draw_fft_data(fm);
 
 	/* This waits for vertical refresh before flipping, so it sleeps */
