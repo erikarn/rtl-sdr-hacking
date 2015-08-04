@@ -159,8 +159,6 @@ draw_fft_data(struct fm_sdl_state *fm)
 	int i, j;
 	double dbm;
 	float x, y;
-	int mul = 256;
-	int midpoint;
 
 	/* XXX not locked? */
 	if (fm->nsamples == 0)
@@ -178,7 +176,6 @@ draw_fft_data(struct fm_sdl_state *fm)
 	 */
 	glBegin(GL_LINE_STRIP);
 	glColor3f(0.0, 1.0, 1.0);
-	midpoint = fm->fft_npoints / 2;
 
 	/*
 	 * The fft_out bins are ordered 0..BW/2, then -BW/2..0.
@@ -194,13 +191,13 @@ draw_fft_data(struct fm_sdl_state *fm)
 		 * entries and plot the average/min/max.
 		 * We should do that later.
 		 */
-		j = bin_to_idx(i, fm->fft_npoints, midpoint);
+		j = bin_to_idx(i, fm->fft_npoints, fm->fft_npoints / 2);
 
 		x = i;
 		dbm = fft_mag(fm->fft_out[j][0], fm->fft_out[j][1]);
 
 		/* DC filter */
-		if (i == midpoint)
+		if (i == fm->fft_npoints / 2)
 			dbm = fft_mag(fm->fft_out[j+1][0], fm->fft_out[j+1][1]);
 
 #if 0
@@ -312,11 +309,11 @@ fm_sdl_set_samplerate(struct fm_sdl_state *fs, int n)
 	 * For now, the FFT is hard-coded to 1024 points.
 	 */
 	fs->fft_npoints = 1024;
-	fs->fft_in = fftw_malloc(sizeof(fftw_complex) * n);
-	fs->fft_out = fftw_malloc(sizeof(fftw_complex) * n);
+	fs->fft_in = fftw_malloc(sizeof(fftw_complex) * fs->fft_npoints);
+	fs->fft_out = fftw_malloc(sizeof(fftw_complex) * fs->fft_npoints);
 	fs->fft_p = fftw_plan_dft_1d(fs->fft_npoints, fs->fft_in,
 	    fs->fft_out, FFTW_FORWARD, FFTW_ESTIMATE);
-	fs->fft_db = calloc(n, sizeof(int));
+	fs->fft_db = calloc(fs->fft_npoints, sizeof(int));
 
 	/* However, s_in is the size of our sample rate */
 	fs->s_in = calloc(n*2, sizeof(int16_t));
