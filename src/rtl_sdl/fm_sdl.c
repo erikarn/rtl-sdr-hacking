@@ -151,6 +151,43 @@ bin_to_idx(int i, int nsamples, int midpoint)
 }
 
 /*
+ * Convert FFT results into dB values.
+ */
+static void
+fft_to_db(struct fm_sdl_state *fm)
+{
+	int i, j;
+	double db;
+	float x, y;
+
+	for (i = 0; i < fm->fft_npoints; i++) {
+		/*
+		 * If we're below midpoint, map 'i' into the -ve space.
+		 * If we're at/above midpoint, map 'i' into the +ve space.
+		 *
+		 * Translate it into the right sample offset for the given
+		 * position.  For now we just skip; we don't try to sum
+		 * entries and plot the average/min/max.
+		 * We should do that later.
+		 */
+		j = bin_to_idx(i, fm->fft_npoints, fm->fft_npoints / 2);
+
+		x = i;
+		db = fft_mag(fm->fft_out[j][0], fm->fft_out[j][1]);
+
+		/* DC filter */
+		if (i == fm->fft_npoints / 2)
+			db = fft_mag(fm->fft_out[j+1][0], fm->fft_out[j+1][1]);
+
+		/* Convert to dB, totally non-legit and not yet fixed.. */
+		/* XXX rtl_power.c does /rate, /samples; not sure exactly what .. */
+		db /= fm->nsamples;
+		db = 10 * log10(db);
+		fm->fft_db[i] = db;
+	}
+}
+
+/*
  * Draw the FFT data out.
  */
 static void
@@ -177,41 +214,12 @@ draw_fft_data(struct fm_sdl_state *fm)
 	glBegin(GL_LINE_STRIP);
 	glColor3f(0.0, 1.0, 1.0);
 
-	/*
-	 * The fft_out bins are ordered 0..BW/2, then -BW/2..0.
-	 * This should be done for the purposes of the plot!
-	 */
+	/* XXX TODO: translate i to bin id to plot */
 	for (i = 0; i < fm->fft_npoints; i++) {
-		/*
-		 * If we're below midpoint, map 'i' into the -ve space.
-		 * If we're at/above midpoint, map 'i' into the +ve space.
-		 *
-		 * Translate it into the right sample offset for the given
-		 * position.  For now we just skip; we don't try to sum
-		 * entries and plot the average/min/max.
-		 * We should do that later.
-		 */
-		j = bin_to_idx(i, fm->fft_npoints, fm->fft_npoints / 2);
-
 		x = i;
-		dbm = fft_mag(fm->fft_out[j][0], fm->fft_out[j][1]);
-
-		/* DC filter */
-		if (i == fm->fft_npoints / 2)
-			dbm = fft_mag(fm->fft_out[j+1][0], fm->fft_out[j+1][1]);
-
-#if 0
-		if (i == midpoint)
-			fprintf(stderr, "DC: %f, %f/%f\n", y, fm->fft_out[j][0], fm->fft_out[j][1]);
-#endif
-
-		/* Convert to dB, totally non-legit */
-		/* XXX rtl_power.c does /rate, /samples; not sure exactly what .. */
-		dbm /= fm->nsamples;
-		dbm = 10 * log10(dbm);
 
 		/* it's in dB, and that's small, so scale it up a little to see */
-		y = dbm * 4;
+		y = fm->fft_db[i] * 4;
 
 		/* y is now in dBm, so scale/invert it appropriately */
 		/* XXX hard-coded hack */
@@ -422,6 +430,10 @@ fm_sdl_update_fft_samples(struct fm_sdl_state *fs)
 	/* .. now we're done with s_in */
 	fs->s_n = 0;
 	fs->s_ready = 0;
+
+	/* Convert FFT results to dB */
+	fft_to_db(fs);
+
 	return (0);
 }
 
