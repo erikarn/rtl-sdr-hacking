@@ -394,7 +394,7 @@ int main(int argc, char **argv)
 		fprintf(stderr, "\nLibrary error %d, exiting...\n", r);}
 
 	fm_fft_thread_signal_exit(state_fm_fft);
-	/* XXX cancel SDL thread */
+	fm_sdl_thread_signal_exit(&state_sdl);
 	rtlsdr_cancel_async(dongle.dev);
 	pthread_join(dongle.thread, NULL);
 	safe_cond_signal(&controller.hop, &controller.hop_m);

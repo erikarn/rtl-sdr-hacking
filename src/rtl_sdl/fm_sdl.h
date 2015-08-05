@@ -26,5 +26,6 @@ extern	void fm_sdl_display_update(struct fm_sdl_state *fm);
 extern	void fm_sdl_set_freq_centre(struct fm_sdl_state *fs, float freq);
 extern	void fm_sdl_process_events(struct fm_sdl_state *fs);
 extern	int fm_sdl_signal_ready(struct fm_sdl_state *fs);
+extern	void fm_sdl_thread_signal_exit(struct fm_sdl_state *fs);
 
 #endif

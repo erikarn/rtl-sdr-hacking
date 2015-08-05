@@ -368,3 +368,14 @@ fm_sdl_signal_ready(struct fm_sdl_state *fs)
 
 	return (0);
 }
+
+void
+fm_sdl_thread_signal_exit(struct fm_sdl_state *fs)
+{
+
+	/* XXX send message to SDL thread/loop to quit */
+	pthread_mutex_lock(&fs->ready_m);
+	fs->do_exit = 1;
+	pthread_cond_signal(&fs->ready);
+	pthread_mutex_unlock(&fs->ready_m);
+}
