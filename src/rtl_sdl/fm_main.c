@@ -150,32 +150,6 @@ static void *dongle_thread_fn(void *arg)
 	return 0;
 }
 
-
-static void *
-fm_sdl_fn(void *arg)
-{
-	struct fm_sdl_state *fm = arg;
-	int i;
-
-	/* Init the SDL/OpenGL screen */
-	fm_scr_init(&state_sdl);
-
-	while (! do_exit) {
-		/* Handle events */
-		fm_sdl_process_events(fm);
-
-		/* XXX TODO: handle said events */
-
-		/* Wait for another update to the fft state */
-		/* XXX TODO: this can block UI events, sigh, should fix that */
-		safe_cond_wait(&fm->ready, &fm->ready_m);
-
-		/* Display update */
-		fm_sdl_display_update(fm);
-	}
-	return (NULL);
-}
-
 static void optimal_settings(int freq, int rate)
 {
 	// giant ball of hacks
@@ -293,11 +267,11 @@ static void
 fm_fft_thread_cb(struct fm_fft_thread *fm, void *cbdata, int *db, int n)
 {
 
-	/* Signal the UI thread that we're ready */
+	/* Give the UI thread more data to display */
 	fm_sdl_update_db(&state_sdl, db, n);
 
 	/* XXX turn this into an SDL message! */
-	safe_cond_signal(&state_sdl.ready, &state_sdl.ready_m);
+	fm_sdl_signal_ready(&state_sdl);
 }
 
 int main(int argc, char **argv)
@@ -407,7 +381,7 @@ int main(int argc, char **argv)
 	pthread_create(&controller.thread, NULL, controller_thread_fn, (void *)(&controller));
 	usleep(100000);
 	pthread_create(&dongle.thread, NULL, dongle_thread_fn, (void *)(&dongle));
-	pthread_create(&state_sdl.thread, NULL, fm_sdl_fn, (void *) &state_sdl);
+	(void) fm_sdl_thread_start(&state_sdl);
 	(void) fm_fft_thread_start(state_fm_fft);
 
 	while (!do_exit) {
@@ -420,10 +394,12 @@ int main(int argc, char **argv)
 		fprintf(stderr, "\nLibrary error %d, exiting...\n", r);}
 
 	fm_fft_thread_signal_exit(state_fm_fft);
+	/* XXX cancel SDL thread */
 	rtlsdr_cancel_async(dongle.dev);
 	pthread_join(dongle.thread, NULL);
 	safe_cond_signal(&controller.hop, &controller.hop_m);
 	pthread_join(controller.thread, NULL);
+	fm_sdl_thread_join(&state_sdl);
 	/* XXX join/cleanup the fm_fft_thread instance */
 
 	//dongle_cleanup(&dongle);

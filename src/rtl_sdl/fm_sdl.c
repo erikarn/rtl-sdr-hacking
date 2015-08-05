@@ -196,7 +196,7 @@ fm_sdl_display_update(struct fm_sdl_state *fm)
 	SDL_GL_SwapBuffers();
 }
 
-int
+static int
 fm_scr_init(struct fm_sdl_state *fs)
 {
 	const SDL_VideoInfo *info = NULL;
@@ -250,6 +250,57 @@ fm_scr_init(struct fm_sdl_state *fs)
 	return 1;
 }
 
+static void *
+fm_sdl_thr(void *arg)
+{
+	struct fm_sdl_state *fm = arg;
+	int i;
+
+	/* Init the SDL/OpenGL screen in this context */
+	fm_scr_init(fm);
+
+	/* XXX locking? */
+	while (! fm->do_exit) {
+
+		/* Handle events */
+		/* XXX TODO: handle said events */
+		fm_sdl_process_events(fm);
+
+		/* Wait for another update to the fft state */
+		/* XXX TODO: this can block UI events, sigh, should fix that */
+		pthread_mutex_lock(&fm->ready_m);
+		(void) pthread_cond_wait(&fm->ready, &fm->ready_m);
+		pthread_mutex_unlock(&fm->ready_m);
+
+		/* Display update */
+		fm_sdl_display_update(fm);
+	}
+
+	return (NULL);
+}
+
+int
+fm_sdl_thread_start(struct fm_sdl_state *fm)
+{
+	int r;
+
+	r = pthread_create(&fm->thread, NULL, fm_sdl_thr, fm);
+	if (r != 0) {
+		warn("%s: pthread_create", __func__);
+		return (-1);
+	}
+
+	return (r);
+}
+
+int
+fm_sdl_thread_join(struct fm_sdl_state *fm)
+{
+
+	(void) pthread_join(fm->thread, NULL);
+	return (0);
+}
+
 int
 fm_sdl_init(struct fm_sdl_state *fs, int npoints)
 {
@@ -299,6 +350,21 @@ fm_sdl_update_db(struct fm_sdl_state *fs, int *db, int n)
 		fs->db_in[i] = db[i];
 	}
 	pthread_rwlock_unlock(&fs->rw);
+
+	return (0);
+}
+
+/*
+ * XXX TODO: turn this into an SDL event, and have
+ * the main SDL loop switch to blocking event reads.
+ */
+int
+fm_sdl_signal_ready(struct fm_sdl_state *fs)
+{
+
+	pthread_mutex_lock(&fs->ready_m);
+	pthread_cond_signal(&fs->ready);
+	pthread_mutex_unlock(&fs->ready_m);
 
 	return (0);
 }
