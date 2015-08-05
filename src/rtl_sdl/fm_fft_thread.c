@@ -136,3 +136,9 @@ fm_fft_thread_set_callback(struct fm_fft_thread *ft, fm_fft_completed_cb *cb,
 	pthread_mutex_unlock(&ft->ft_mtx);
 }
 
+void
+fm_fft_thread_join(struct fm_fft_thread *ft)
+{
+
+	(void) pthread_join(ft->ft_thr, NULL);
+}

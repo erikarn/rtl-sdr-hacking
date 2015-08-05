@@ -32,5 +32,6 @@ extern	int fm_fft_thread_start_fft(struct fm_fft_thread *ft);
 extern	int fm_fft_thread_signal_exit(struct fm_fft_thread *ft);
 extern	void fm_fft_thread_set_callback(struct fm_fft_thread *ft,
 	    fm_fft_completed_cb *cb, void *cbdata);
+extern	void fm_fft_thread_join(struct fm_fft_thread *ft);
 
 #endif	/* __FM_FFT_THREAD_H__ */

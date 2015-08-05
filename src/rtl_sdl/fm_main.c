@@ -400,7 +400,7 @@ int main(int argc, char **argv)
 	safe_cond_signal(&controller.hop, &controller.hop_m);
 	pthread_join(controller.thread, NULL);
 	fm_sdl_thread_join(&state_sdl);
-	/* XXX join/cleanup the fm_fft_thread instance */
+	fm_fft_thread_join(state_fm_fft);
 
 	//dongle_cleanup(&dongle);
 	controller_cleanup(&controller);
