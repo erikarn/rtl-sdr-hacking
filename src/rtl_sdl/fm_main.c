@@ -295,6 +295,8 @@ fm_fft_thread_cb(struct fm_fft_thread *fm, void *cbdata, int *db, int n)
 
 	/* Signal the UI thread that we're ready */
 	fm_sdl_update_db(&state_sdl, db, n);
+
+	/* XXX turn this into an SDL message! */
 	safe_cond_signal(&state_sdl.ready, &state_sdl.ready_m);
 }
 
@@ -417,10 +419,12 @@ int main(int argc, char **argv)
 	else {
 		fprintf(stderr, "\nLibrary error %d, exiting...\n", r);}
 
+	fm_fft_thread_signal_exit(state_fm_fft);
 	rtlsdr_cancel_async(dongle.dev);
 	pthread_join(dongle.thread, NULL);
 	safe_cond_signal(&controller.hop, &controller.hop_m);
 	pthread_join(controller.thread, NULL);
+	/* XXX join/cleanup the fm_fft_thread instance */
 
 	//dongle_cleanup(&dongle);
 	controller_cleanup(&controller);

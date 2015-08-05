@@ -158,7 +158,7 @@ draw_fft_data(struct fm_sdl_state *fm)
 	glBegin(GL_LINE_STRIP);
 	glColor3f(0.0, 1.0, 1.0);
 
-	/* XXX TODO: translate i to bin id to plot */
+	/* XXX TODO: plot the window size in pixels; translate each to bin id */
 	for (i = 0; i < fm->num_db; i++) {
 		x = i;
 
