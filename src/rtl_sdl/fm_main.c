@@ -307,6 +307,13 @@ void sanity_checks(void)
 	}
 }
 
+static void
+fm_fft_thread_cb(struct fm_fft_thread *fm, void *cbdata, int *db, int n)
+{
+
+	fprintf(stderr, "%s: called!\n", __func__);
+}
+
 int main(int argc, char **argv)
 {
 #ifndef _WIN32
@@ -326,6 +333,8 @@ int main(int argc, char **argv)
 		fprintf(stderr, "Failed to create FFT thread\n");
 		exit(127);
 	}
+
+	fm_fft_thread_set_callback(state_fm_fft, fm_fft_thread_cb, NULL);
 
 	while ((opt = getopt(argc, argv, "d:f:g:s:b:l:o:t:r:p:E:F:A:M:h")) != -1) {
 		switch (opt) {
