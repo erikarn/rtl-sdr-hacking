@@ -20,6 +20,8 @@
 #include "fm_cfg.h"
 #include "fm_dongle.h"
 #include "fm_sdl.h"
+#include "fm_fft.h"
+#include "fm_fft_thread.h"
 
 int do_exit = 0;
 
@@ -40,6 +42,7 @@ struct controller_state
 struct dongle_state dongle;
 struct controller_state controller;
 struct fm_sdl_state state_sdl;
+struct fm_fft_thread *state_fm_fft;
 
 void usage(void)
 {
@@ -135,10 +138,13 @@ static void rtlsdr_callback(unsigned char *buf, uint32_t len, void *ctx)
 	/* DC correct the interleaved data */
 	remove_dc(s->buf16, len);
 
-	/* Rendering FFT/signal data */
+	/* Legacy rendering FFT/signal data */
 	(void) fm_sdl_update(&state_sdl, (int16_t *)s->buf16, len);
-
 	safe_cond_signal(&state_sdl.ready, &state_sdl.ready_m);
+
+	/* New FFT thread */
+	fm_fft_thread_add_samples(state_fm_fft, s->buf16, len);
+	fm_fft_thread_start_fft(state_fm_fft);
 }
 
 static void *dongle_thread_fn(void *arg)
@@ -315,6 +321,11 @@ int main(int argc, char **argv)
 	controller_init(&controller);
 
 	fm_sdl_init(&state_sdl);
+	state_fm_fft = fm_fft_thread_create(1024, 2048000);
+	if (state_fm_fft == NULL) {
+		fprintf(stderr, "Failed to create FFT thread\n");
+		exit(127);
+	}
 
 	while ((opt = getopt(argc, argv, "d:f:g:s:b:l:o:t:r:p:E:F:A:M:h")) != -1) {
 		switch (opt) {
@@ -372,7 +383,7 @@ int main(int argc, char **argv)
 		fprintf(stderr, "Failed to open rtlsdr device #%d.\n", dongle.dev_index);
 		exit(1);
 	}
-#ifndef _WIN32
+
 	sigact.sa_handler = sighandler;
 	sigemptyset(&sigact.sa_mask);
 	sigact.sa_flags = 0;
@@ -380,9 +391,6 @@ int main(int argc, char **argv)
 	sigaction(SIGTERM, &sigact, NULL);
 	sigaction(SIGQUIT, &sigact, NULL);
 	sigaction(SIGPIPE, &sigact, NULL);
-#else
-	SetConsoleCtrlHandler( (PHANDLER_ROUTINE) sighandler, TRUE );
-#endif
 
 	/* Set the tuner gain */
 	if (dongle.gain == AUTO_GAIN) {
@@ -403,6 +411,7 @@ int main(int argc, char **argv)
 	usleep(100000);
 	pthread_create(&dongle.thread, NULL, dongle_thread_fn, (void *)(&dongle));
 	pthread_create(&state_sdl.thread, NULL, fm_sdl_fn, (void *) &state_sdl);
+	(void) fm_fft_thread_start(state_fm_fft);
 
 	while (!do_exit) {
 		usleep(100000);
