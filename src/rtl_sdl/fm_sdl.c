@@ -49,6 +49,7 @@ fm_sdl_process_events(struct fm_sdl_state *fm)
 	}
 }
 
+#if 0
 /*
  * Draw just the raw signal line - signal in the time domain.
  */
@@ -132,62 +133,7 @@ draw_signal_line(struct fm_sdl_state *fm)
 	glEnd();
 
 }
-
-static float
-fft_mag(float r, float i)
-{
-	return (sqrtf(r*r + i*i));
-}
-
-static int
-bin_to_idx(int i, int nsamples, int midpoint)
-{
-	int j;
-
-	/* XXX TODO: simplify */
-	if (i < midpoint)
-	    j = (nsamples / 2) + (i * nsamples) / nsamples;
-	else
-	   j = (i - midpoint);
-	return (j);
-}
-
-/*
- * Convert FFT results into dB values.
- */
-static void
-fft_to_db(struct fm_sdl_state *fm)
-{
-	int i, j;
-	double db;
-	float x, y;
-
-	for (i = 0; i < fm->fft_npoints; i++) {
-		/*
-		 * If we're below midpoint, map 'i' into the -ve space.
-		 * If we're at/above midpoint, map 'i' into the +ve space.
-		 *
-		 * Translate it into the right sample offset for the given
-		 * position.  For now we just skip; we don't try to sum
-		 * entries and plot the average/min/max.
-		 * We should do that later.
-		 */
-		j = bin_to_idx(i, fm->fft_npoints, fm->fft_npoints / 2);
-
-		x = i;
-		db = fft_mag(fm->fft_out[j][0], fm->fft_out[j][1]);
-
-		/* DC filter */
-		if (i == fm->fft_npoints / 2)
-			db = fft_mag(fm->fft_out[j+1][0], fm->fft_out[j+1][1]);
-
-		/* Convert to dB, totally non-legit and not yet fixed.. */
-		/* XXX rtl_power.c does /rate, /samples; not sure exactly what .. */
-		db /= fm->nsamples;
-		db = 10 * log10(db);
-		fm->fft_db[i] = db;
-	}
-}
+#endif
 
 /*
  * Draw the FFT data out.
@@ -198,10 +144,6 @@ draw_fft_data(struct fm_sdl_state *fm)
 	int i, j;
 	double dbm;
 	float x, y;
-
-	/* XXX not locked? */
-	if (fm->nsamples == 0)
-		return;
 
 	glBegin(GL_LINE_STRIP);
 	glColor3f(1.0, 0.0, 0.0);
@@ -217,11 +159,11 @@ draw_fft_data(struct fm_sdl_state *fm)
 	glColor3f(0.0, 1.0, 1.0);
 
 	/* XXX TODO: translate i to bin id to plot */
-	for (i = 0; i < fm->fft_npoints; i++) {
+	for (i = 0; i < fm->num_db; i++) {
 		x = i;
 
 		/* it's in dB, and that's small, so scale it up a little to see */
-		y = fm->fft_db[i] * 4;
+		y = fm->db_in[i] * 4;
 
 		/* y is now in dBm, so scale/invert it appropriately */
 		/* XXX hard-coded hack */
@@ -309,32 +251,7 @@ fm_scr_init(struct fm_sdl_state *fs)
 }
 
 int
-fm_sdl_set_samplerate(struct fm_sdl_state *fs, int n)
-{
-
-	pthread_rwlock_wrlock(&fs->rw);
-
-	/*
-	 * For now, the FFT is hard-coded to 1024 points.
-	 */
-	fs->fft_npoints = 1024;
-	fs->fft_in = fftw_malloc(sizeof(fftw_complex) * fs->fft_npoints);
-	fs->fft_out = fftw_malloc(sizeof(fftw_complex) * fs->fft_npoints);
-	fs->fft_p = fftw_plan_dft_1d(fs->fft_npoints, fs->fft_in,
-	    fs->fft_out, FFTW_FORWARD, FFTW_ESTIMATE);
-	fs->fft_db = calloc(fs->fft_npoints, sizeof(int));
-
-	/* However, s_in is the size of our sample rate */
-	fs->s_in = calloc(n*2, sizeof(int16_t));
-	fs->nsamples = n;
-
-	pthread_rwlock_unlock(&fs->rw);
-	return (0);
-
-}
-
-int
-fm_sdl_init(struct fm_sdl_state *fs)
+fm_sdl_init(struct fm_sdl_state *fs, int npoints)
 {
 
 	bzero(fs, sizeof(*fs));
@@ -348,109 +265,9 @@ fm_sdl_init(struct fm_sdl_state *fs)
 	fs->scr_xsize = 1024;
 	fs->scr_ysize = 480;
 
-	return (0);
-}
-
-/*
- * Add in samples to the pending queue.
- */
-int
-fm_sdl_update(struct fm_sdl_state *fs, int16_t *s, int n)
-{
-	int i;
-
-	/* Run too early? */
-	/* XXX locking? */
-	if (fs->nsamples == 0)
-		return (-1);
-
-	/*
-	 * We receive samples in small chunks; so treat the fft_in[]
-	 * array as a sliding window and move things along as appropriate.
-	 */
-
-	/*
-	 * Copy the data into our incoming area.
-	 * Overwrite what's currently there.
-	 */
-	pthread_rwlock_wrlock(&fs->rw);
-	fs->s_n = 0;
-	for (i = 0; i < n; i++) {
-		fs->s_in[fs->s_n] = s[i];
-		fs->s_n++;
-	}
-
-#if 0
-	fprintf(stderr, "%s: n=%d, nsamples=%d, s_n=%d\n",
-	    __func__,
-	    n,
-	    fs->nsamples,
-	    fs->s_n);
-#endif
-
-#if 0
-	/* Signal if we're ready for the FFT bit */
-	if (fs->s_n >= fs->nsamples * 2)
-		fs->s_ready = 1;
-#endif
-	fs->s_ready = 1;
-
-	pthread_rwlock_unlock(&fs->rw);
-
-	return (0);
-}
-
-/*
- * Called with write lock held.
- */
-int
-fm_sdl_update_fft_samples(struct fm_sdl_state *fs)
-{
-	int i, j, k;
-
-	if (fs->nsamples == 0)
-		return (-1);
-
-	if (fs->s_ready == 0)
-		return (-1);
-
-#if 0
-	fprintf(stderr, "%s: ready; nsamples=%d, s_n=%d\n",
-	    __func__,
-	    fs->nsamples,
-	    fs->s_n);
-#endif
-
-	/* Copy these samples in */
-	/* XXX assumes we have enough! */
-	for (i = 0, j = 0; i < fs->fft_npoints; i++) {
-		fs->fft_in[i][0] = fs->s_in[j++];
-		fs->fft_in[i][1] = fs->s_in[j++];
-	}
-
-	/* .. now we're done with s_in */
-	fs->s_n = 0;
-	fs->s_ready = 0;
-
-	/* Convert FFT results to dB */
-	fft_to_db(fs);
-
-	return (0);
-}
-
-/*
- * XXX TODO: should have a separate rw lock
- * protecting fft_in[].
- */
-int
-fm_sdl_run(struct fm_sdl_state *fs)
-{
-
-	if (fs->nsamples == 0)
-		return (-1);
-
-	/* Run FFT */
-	fftw_execute(fs->fft_p);
+	fs->db_in = calloc(npoints, sizeof(int));
+	fs->num_db = npoints;
+	/* XXX NULL check? */
 
 	return (0);
 }
@@ -462,4 +279,26 @@ fm_sdl_set_freq_centre(struct fm_sdl_state *fs, float freq)
 	pthread_rwlock_wrlock(&fs->rw);
 	fs->freq_centre = freq;
 	pthread_rwlock_unlock(&fs->rw);
+}
+
+int
+fm_sdl_update_db(struct fm_sdl_state *fs, int *db, int n)
+{
+	int i;
+
+	/* XXX verify we have been handed a valid bin number! */
+	if (n != fs->num_db) {
+		fprintf(stderr, "%s: n (%d) != num_db (%d) !\n",
+		    __func__,
+		    n,
+		    fs->num_db);
+		return (-1);
+	}
+	pthread_rwlock_wrlock(&fs->rw);
+	for (i = 0; i < fs->num_db; i++) {
+		fs->db_in[i] = db[i];
+	}
+	pthread_rwlock_unlock(&fs->rw);
+
+	return (0);
 }

@@ -138,10 +138,6 @@ static void rtlsdr_callback(unsigned char *buf, uint32_t len, void *ctx)
 	/* DC correct the interleaved data */
 	remove_dc(s->buf16, len);
 
-	/* Legacy rendering FFT/signal data */
-	(void) fm_sdl_update(&state_sdl, (int16_t *)s->buf16, len);
-	safe_cond_signal(&state_sdl.ready, &state_sdl.ready_m);
-
 	/* New FFT thread */
 	fm_fft_thread_add_samples(state_fm_fft, s->buf16, len);
 	fm_fft_thread_start_fft(state_fm_fft);
@@ -173,17 +169,6 @@ fm_sdl_fn(void *arg)
 		/* Wait for another update to the fft state */
 		/* XXX TODO: this can block UI events, sigh, should fix that */
 		safe_cond_wait(&fm->ready, &fm->ready_m);
-
-		/* Ok - we have an update; let's get FFT results */
-		pthread_rwlock_wrlock(&fm->rw);
-		i = fm_sdl_update_fft_samples(fm);
-		pthread_rwlock_unlock(&fm->rw);
-
-		if (i < 0)
-			continue;
-
-		/* Do the actual FFT */
-		fm_sdl_run(fm);
 
 		/* Display update */
 		fm_sdl_display_update(fm);
@@ -237,9 +222,6 @@ static void *controller_thread_fn(void *arg)
 
 	/* Set the sample rate */
 	verbose_set_sample_rate(dongle.dev, dongle.rate);
-
-	/* Tell the sdl layer about it */
-	fm_sdl_set_samplerate(&state_sdl, dongle.rate);
 
 	fprintf(stderr, "Output at %u Hz.\n", dongle.rate);
 
@@ -311,7 +293,9 @@ static void
 fm_fft_thread_cb(struct fm_fft_thread *fm, void *cbdata, int *db, int n)
 {
 
-	fprintf(stderr, "%s: called!\n", __func__);
+	/* Signal the UI thread that we're ready */
+	fm_sdl_update_db(&state_sdl, db, n);
+	safe_cond_signal(&state_sdl.ready, &state_sdl.ready_m);
 }
 
 int main(int argc, char **argv)
@@ -327,7 +311,9 @@ int main(int argc, char **argv)
 	dongle.rate = 2048000;
 	controller_init(&controller);
 
-	fm_sdl_init(&state_sdl);
+	/* XXX 1024 - how many FFT bins */
+	fm_sdl_init(&state_sdl, 1024);
+
 	state_fm_fft = fm_fft_thread_create(1024, 2048000);
 	if (state_fm_fft == NULL) {
 		fprintf(stderr, "Failed to create FFT thread\n");
