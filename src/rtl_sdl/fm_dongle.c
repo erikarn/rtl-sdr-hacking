@@ -53,6 +53,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <err.h>
 
 #include <unistd.h>
 #include <math.h>
@@ -72,4 +73,70 @@ void dongle_init(struct dongle_state *s)
 	s->mute = 0;
 	s->direct_sampling = 0;
 	s->offset_tuning = 0;
+	s->do_exit = 0;
+}
+
+static void
+*dongle_thread_fn(void *arg)
+{
+	struct dongle_state *s = arg;
+	int r;
+	int n_read;
+	uint8_t *buffer;
+
+/* XXX can't be bigger than MAXIMUM_BUF_LENGTH */
+#define	OUT_BLOCK_SIZE	524288
+	buffer = malloc(OUT_BLOCK_SIZE * sizeof(uint8_t));
+
+	/*
+	 * Read data in a loop, push it up via the callback.
+	 */
+	while (! s->do_exit) {
+		r = rtlsdr_read_sync(s->dev, buffer, OUT_BLOCK_SIZE, &n_read);
+		if (r < 0) {
+			fprintf(stderr, "rtlsdr_read_sync: failed\n");
+			break;
+		}
+
+		s->cb.cb(s, s->cb.cbdata, buffer, n_read);
+	}
+	//rtlsdr_read_async(s->dev, rtlsdr_callback, s, 0, s->buf_len);
+	return 0;
+}
+
+void
+dongle_set_callback(struct dongle_state *s, dongle_data_cb *cb, void *cbdata)
+{
+
+	/* XXX locking */
+	s->cb.cb = cb;
+	s->cb.cbdata = cbdata;
+}
+
+int
+dongle_thread_start(struct dongle_state *s)
+{
+	int r;
+
+	r = pthread_create(&s->thread, NULL, dongle_thread_fn, s);
+	if (r != 0) {
+		warn("%s: pthread_create", __func__);
+		return (-1);
+	}
+	return (0);
+}
+
+void
+dongle_shutdown(struct dongle_state *s)
+{
+
+	/* XXX locking */
+	s->do_exit = 1;
+}
+
+void
+dongle_thread_join(struct dongle_state *s)
+{
+
+	pthread_join(s->thread, NULL);
 }

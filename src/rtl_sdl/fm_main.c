@@ -93,15 +93,12 @@ static void sighandler(int signum)
 #define safe_cond_signal(n, m) pthread_mutex_lock(m); pthread_cond_signal(n); pthread_mutex_unlock(m)
 #define safe_cond_wait(n, m) pthread_mutex_lock(m); pthread_cond_wait(n, m); pthread_mutex_unlock(m)
 
-static void rtlsdr_callback(unsigned char *buf, uint32_t len, void *ctx)
+static void
+dongle_data_callback(struct dongle_state *s, void *cbdata,
+    unsigned char *buf, uint32_t len)
 {
 	int i;
-	struct dongle_state *s = ctx;
 
-	if (do_exit) {
-		return;}
-	if (!ctx) {
-		return;}
 	if (s->mute) {
 		for (i=0; i<s->mute; i++) {
 			buf[i] = 127;}
@@ -129,13 +126,6 @@ static void rtlsdr_callback(unsigned char *buf, uint32_t len, void *ctx)
 	/* New FFT thread */
 	fm_fft_thread_add_samples(state_fm_fft, s->buf16, len);
 	fm_fft_thread_start_fft(state_fm_fft);
-}
-
-static void *dongle_thread_fn(void *arg)
-{
-	struct dongle_state *s = arg;
-	rtlsdr_read_async(s->dev, rtlsdr_callback, s, 0, s->buf_len);
-	return 0;
 }
 
 void frequency_range(struct controller_state *s, char *arg)
@@ -193,6 +183,7 @@ int main(int argc, char **argv)
 
 	dongle_init(&dongle);
 	dongle.rate = 2048000;
+	dongle_set_callback(&dongle, dongle_data_callback, NULL);
 	controller_init(&controller, &dongle);
 
 	/* XXX 1024 - how many FFT bins */
@@ -288,7 +279,7 @@ int main(int argc, char **argv)
 
 	(void) controller_thread_start(&controller);
 	usleep(100000);
-	pthread_create(&dongle.thread, NULL, dongle_thread_fn, (void *)(&dongle));
+	(void) dongle_thread_start(&dongle);
 	(void) fm_sdl_thread_start(&state_sdl);
 	(void) fm_fft_thread_start(state_fm_fft);
 
@@ -303,7 +294,7 @@ int main(int argc, char **argv)
 
 	fm_fft_thread_signal_exit(state_fm_fft);
 	fm_sdl_thread_signal_exit(&state_sdl);
-	rtlsdr_cancel_async(dongle.dev);
+	dongle_shutdown(&dongle);
 	pthread_join(dongle.thread, NULL);
 
 	controller_shutdown(&controller);
