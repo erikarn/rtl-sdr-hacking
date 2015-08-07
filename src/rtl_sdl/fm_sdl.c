@@ -25,6 +25,8 @@
 #include "rtl-sdr.h"
 #include "fm_dongle.h" /* XXX for hacking */
 
+#define	FM_SDL_EV_FFT_READY			0x1
+
 /* XXX for hacking */
 extern struct dongle_state dongle;
 
@@ -62,6 +64,19 @@ handle_windowevent(struct fm_sdl_state *fm, SDL_Event *e)
 	fm_sdl_display_update(fm);
 }
 
+static void
+handle_userevent(struct fm_sdl_state *fm, SDL_Event *e)
+{
+
+	switch (e->user.code) {
+	case FM_SDL_EV_FFT_READY:
+		fm_sdl_display_update(fm);
+		break;
+	default:
+		break;
+	}
+}
+
 /*
  * Called by the UI thread - call it without locks held.
  */
@@ -82,6 +97,9 @@ fm_sdl_process_events(struct fm_sdl_state *fm)
 			break;
 		case SDL_VIDEOEXPOSE:
 			handle_windowevent(fm, &event);
+			break;
+		case SDL_USEREVENT:
+			handle_userevent(fm, &event);
 			break;
 		default:
 			break;
@@ -301,19 +319,8 @@ fm_sdl_thr(void *arg)
 
 	/* XXX locking? */
 	while (! fm->do_exit) {
-
-		/* Handle events */
-		/* XXX TODO: handle said events */
+		/* Handle events; will sleep until it's done */
 		fm_sdl_process_events(fm);
-
-		/* Wait for another update to the fft state */
-		/* XXX TODO: this can block UI events, sigh, should fix that */
-		pthread_mutex_lock(&fm->ready_m);
-		(void) pthread_cond_wait(&fm->ready, &fm->ready_m);
-		pthread_mutex_unlock(&fm->ready_m);
-
-		/* Display update */
-		fm_sdl_display_update(fm);
 	}
 
 	return (NULL);
@@ -401,10 +408,11 @@ fm_sdl_update_db(struct fm_sdl_state *fs, int *db, int n)
 int
 fm_sdl_signal_ready(struct fm_sdl_state *fs)
 {
+	SDL_Event event;
 
-	pthread_mutex_lock(&fs->ready_m);
-	pthread_cond_signal(&fs->ready);
-	pthread_mutex_unlock(&fs->ready_m);
+	event.type = SDL_USEREVENT;
+	event.user.code = FM_SDL_EV_FFT_READY;
+	SDL_PushEvent(&event);
 
 	return (0);
 }
