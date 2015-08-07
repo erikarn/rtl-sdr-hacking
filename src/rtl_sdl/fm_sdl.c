@@ -55,6 +55,13 @@ handle_key_down(struct fm_sdl_state *fm, SDL_keysym *key)
 	}
 }
 
+static void
+handle_windowevent(struct fm_sdl_state *fm, SDL_Event *e)
+{
+
+	fm_sdl_display_update(fm);
+}
+
 /*
  * Called by the UI thread - call it without locks held.
  */
@@ -72,6 +79,11 @@ fm_sdl_process_events(struct fm_sdl_state *fm)
 		case SDL_QUIT:
 			/* Handle quit requests (like Ctrl-c). */
 			quit_tutorial( 0 );
+			break;
+		case SDL_VIDEOEXPOSE:
+			handle_windowevent(fm, &event);
+			break;
+		default:
 			break;
 		}
 	}
