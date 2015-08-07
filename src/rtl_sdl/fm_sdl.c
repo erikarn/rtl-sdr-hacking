@@ -20,11 +20,39 @@
 
 #include "fm_sdl.h"
 
+/* XXX for hacking */
+#include "fm_cfg.h"
+#include "rtl-sdr.h"
+#include "fm_dongle.h" /* XXX for hacking */
+
+/* XXX for hacking */
+extern struct dongle_state dongle;
+
 static void
 quit_tutorial(int code)
 {
 	SDL_Quit();
 	exit(code);
+}
+
+static void
+handle_key_down(struct fm_sdl_state *fm, SDL_keysym *key)
+{
+
+	//fprintf(stderr ,"%s: key=%d\n", __func__, key->sym);
+	/* 122 = z, 120 = x */
+
+	/* This is just a total hack right now to move the frequency bits around */
+	switch (key->sym) {
+	case 122:	/* z */
+		(void) dongle_change_freq(&dongle, dongle.freq - (1 * 100 * 1000));
+		break;
+	case 120:	/* x */
+		(void) dongle_change_freq(&dongle, dongle.freq + (1 * 100 * 1000));
+		break;
+	default:
+		break;
+	}
 }
 
 /*
@@ -37,10 +65,10 @@ fm_sdl_process_events(struct fm_sdl_state *fm)
 
 	while(SDL_PollEvent(&event)) {
 		switch(event.type) {
-//		case SDL_KEYDOWN:
-//			/* Handle key presses. */
-//			handle_key_down( &event.key.keysym );
-//			break;
+		case SDL_KEYDOWN:
+			/* Handle key presses. */
+			handle_key_down(fm, &event.key.keysym);
+			break;
 		case SDL_QUIT:
 			/* Handle quit requests (like Ctrl-c). */
 			quit_tutorial( 0 );
