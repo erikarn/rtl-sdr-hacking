@@ -95,7 +95,7 @@ static void sighandler(int signum)
 
 static void
 dongle_data_callback(struct dongle_state *s, void *cbdata,
-    unsigned char *buf, uint32_t len)
+    const struct dongle_cur_state *cs, unsigned char *buf, uint32_t len)
 {
 	int i;
 

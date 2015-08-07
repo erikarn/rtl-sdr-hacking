@@ -74,12 +74,14 @@ void dongle_init(struct dongle_state *s)
 	s->direct_sampling = 0;
 	s->offset_tuning = 0;
 	s->do_exit = 0;
+	pthread_mutex_init(&s->mtx, NULL);
 }
 
 static void
 *dongle_thread_fn(void *arg)
 {
 	struct dongle_state *s = arg;
+	struct dongle_cur_state cur;
 	int r;
 	int n_read;
 	uint8_t *buffer;
@@ -91,14 +93,55 @@ static void
 	/*
 	 * Read data in a loop, push it up via the callback.
 	 */
-	while (! s->do_exit) {
+	while (1) {
+		uint32_t freq;
+		int do_freq_change = 0;
+
+		pthread_mutex_lock(&s->mtx);
+		if (s->do_exit) {
+			pthread_mutex_unlock(&s->mtx);
+			break;
+		}
+
+		/*
+		 * If we've been requested to change channel,
+		 * take note.
+		 */
+		if (s->pend.active) {
+			freq = s->pend.freq;
+			do_freq_change = 1;
+
+			s->pend.freq = 0;
+			s->pend.active = 0;
+
+			/* Ensure we do the state change here */
+			s->freq = freq;
+		}
+
+		/* Ok - unlock before we do the rtlsdr calls themselves */
+		pthread_mutex_unlock(&s->mtx);
+
+		/* Ok, no lock held - now, change channel if required */
+		if (do_freq_change) {
+			/* XXX handle error? */
+			fprintf(stderr, "%s: changing freq to %u Hz\n",
+			    __func__,
+			    freq);
+			rtlsdr_set_center_freq(s->dev, freq);
+		}
+
+		/* Ok, now we can read data */
 		r = rtlsdr_read_sync(s->dev, buffer, OUT_BLOCK_SIZE, &n_read);
 		if (r < 0) {
 			fprintf(stderr, "rtlsdr_read_sync: failed\n");
 			break;
 		}
+		cur.freq = s->freq;
+		cur.rate = s->rate;
+		cur.gain = s->gain;
+		cur.ppm_error = s->ppm_error;
 
-		s->cb.cb(s, s->cb.cbdata, buffer, n_read);
+		s->cb.cb(s, s->cb.cbdata, &cur, buffer, n_read);
 	}
 	//rtlsdr_read_async(s->dev, rtlsdr_callback, s, 0, s->buf_len);
 	return 0;
@@ -130,8 +173,9 @@ void
 dongle_shutdown(struct dongle_state *s)
 {
 
-	/* XXX locking */
+	pthread_mutex_lock(&s->mtx);
 	s->do_exit = 1;
+	pthread_mutex_unlock(&s->mtx);
 }
 
 void
@@ -139,4 +183,24 @@ dongle_thread_join(struct dongle_state *s)
 {
 
 	pthread_join(s->thread, NULL);
+}
+
+int
+dongle_change_freq(struct dongle_state *s, uint32_t freq)
+{
+	pthread_mutex_lock(&s->mtx);
+
+	/* Warn, then override a channel change */
+	if (s->pend.active) {
+		fprintf(stderr, "%s: overriding (%u -> %u Hz)\n",
+		    __func__,
+		    s->pend.freq,
+		    freq);
+	}
+
+	s->pend.active = 1;
+	s->pend.freq = freq;
+	pthread_mutex_unlock(&s->mtx);
+
+	return (0);
 }
