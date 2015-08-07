@@ -13,6 +13,21 @@ typedef	void dongle_data_cb(struct dongle_state *d, void *cbdata,
 	    const struct dongle_cur_state *state,
 	    unsigned char *buf, uint32_t len);
 
+typedef enum  {
+	FM_SDL_DONGLE_STATE_NONE,
+	FM_SDL_DONGLE_STATE_IDLE,
+	FM_SDL_DONGLE_STATE_FREQ_SET,
+	FM_SDL_DONGLE_STATE_FREQ_CHANGE,
+	FM_SDL_DONGLE_STATE_FREQ_ERR,
+	FM_SDL_DONGLE_STATE_FREQ_TUNED,
+	FM_SDL_DONGLE_STATE_RUN,
+} dongle_cur_state_t;
+
+typedef	void dongle_state_cb(struct dongle_state *d, void *cbdata,
+	    dongle_cur_state_t old_status,
+	    dongle_cur_state_t new_status,
+	    int error);
+
 struct dongle_state
 {
         pthread_t thread;
@@ -28,11 +43,17 @@ struct dongle_state
         int      offset_tuning;
         int      direct_sampling;
         int      mute;
+	dongle_cur_state_t cur_state;
 	int do_exit;
 	struct {
 		dongle_data_cb *cb;
 		void *cbdata;
-	} cb;
+	} cb_data;
+
+	struct {
+		dongle_data_cb *cb;
+		void *cbdata;
+	} cb_state;
 
 	/* Set a pending frequency change */
 	struct {

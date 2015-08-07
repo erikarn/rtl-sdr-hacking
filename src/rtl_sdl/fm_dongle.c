@@ -141,7 +141,7 @@ static void
 		cur.gain = s->gain;
 		cur.ppm_error = s->ppm_error;
 
-		s->cb.cb(s, s->cb.cbdata, &cur, buffer, n_read);
+		s->cb_data.cb(s, s->cb_data.cbdata, &cur, buffer, n_read);
 	}
 	//rtlsdr_read_async(s->dev, rtlsdr_callback, s, 0, s->buf_len);
 	return 0;
@@ -152,8 +152,8 @@ dongle_set_callback(struct dongle_state *s, dongle_data_cb *cb, void *cbdata)
 {
 
 	/* XXX locking */
-	s->cb.cb = cb;
-	s->cb.cbdata = cbdata;
+	s->cb_data.cb = cb;
+	s->cb_data.cbdata = cbdata;
 }
 
 int
