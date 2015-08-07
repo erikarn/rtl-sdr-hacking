@@ -19,24 +19,12 @@
 
 #include "fm_cfg.h"
 #include "fm_dongle.h"
+#include "fm_controller.h"
 #include "fm_sdl.h"
 #include "fm_fft.h"
 #include "fm_fft_thread.h"
 
 int do_exit = 0;
-
-struct controller_state
-{
-	int      exit_flag;
-	pthread_t thread;
-	uint32_t freqs[FREQUENCIES_LIMIT];
-	int      freq_len;
-	int      freq_now;
-	int      edge;
-	int      wb_mode;
-	pthread_cond_t hop;
-	pthread_mutex_t hop_m;
-};
 
 // multiple of these, eventually
 struct dongle_state dongle;
@@ -150,70 +138,6 @@ static void *dongle_thread_fn(void *arg)
 	return 0;
 }
 
-static void optimal_settings(int freq, int rate)
-{
-	// giant ball of hacks
-	// seems unable to do a single pass, 2:1
-	int capture_freq, capture_rate;
-	struct dongle_state *d = &dongle;
-	struct controller_state *cs = &controller;
-
-	fprintf(stderr, "Freq: %d, rate: %d\n", freq, rate);
-	capture_freq = freq;
-	capture_rate = rate;
-
-	d->freq = (uint32_t)capture_freq;
-	d->rate = (uint32_t)capture_rate;
-}
-
-static void *controller_thread_fn(void *arg)
-{
-	// thoughts for multiple dongles
-	// might be no good using a controller thread if retune/rate blocks
-	int i;
-	struct controller_state *s = arg;
-
-	if (s->wb_mode) {
-		for (i=0; i < s->freq_len; i++) {
-			s->freqs[i] += 16000;}
-	}
-
-	/* set up primary channel */
-	/* XXX hard-code sample rate for now */
-	optimal_settings(s->freqs[0], dongle.rate);
-
-	if (dongle.direct_sampling) {
-		verbose_direct_sampling(dongle.dev, 1);}
-	if (dongle.offset_tuning) {
-		verbose_offset_tuning(dongle.dev);}
-
-	/* Set the frequency */
-	verbose_set_frequency(dongle.dev, dongle.freq);
-#if 0
-	fprintf(stderr, "Oversampling input by: %ix.\n", demod.downsample);
-	fprintf(stderr, "Oversampling output by: %ix.\n", demod.post_downsample);
-#endif
-
-	/* Set the sample rate */
-	verbose_set_sample_rate(dongle.dev, dongle.rate);
-
-	fprintf(stderr, "Output at %u Hz.\n", dongle.rate);
-
-	while (!do_exit) {
-		safe_cond_wait(&s->hop, &s->hop_m);
-		if (s->freq_len <= 1) {
-			continue;}
-#if 0
-		/* hacky hopping */
-		s->freq_now = (s->freq_now + 1) % s->freq_len;
-		optimal_settings(s->freqs[s->freq_now], demod.rate_in);
-		rtlsdr_set_center_freq(dongle.dev, dongle.freq);
-		dongle.mute = BUFFER_DUMP;
-#endif
-	}
-	return 0;
-}
-
 void frequency_range(struct controller_state *s, char *arg)
 {
 	char *start, *stop, *step;
@@ -232,22 +156,6 @@ void frequency_range(struct controller_state *s, char *arg)
 	}
 	stop[-1] = ':';
 	step[-1] = ':';
-}
-
-void controller_init(struct controller_state *s)
-{
-	s->freqs[0] = 100000000;
-	s->freq_len = 0;
-	s->edge = 0;
-	s->wb_mode = 0;
-	pthread_cond_init(&s->hop, NULL);
-	pthread_mutex_init(&s->hop_m, NULL);
-}
-
-void controller_cleanup(struct controller_state *s)
-{
-	pthread_cond_destroy(&s->hop);
-	pthread_mutex_destroy(&s->hop_m);
 }
 
 void sanity_checks(void)
@@ -285,7 +193,7 @@ int main(int argc, char **argv)
 
 	dongle_init(&dongle);
 	dongle.rate = 2048000;
-	controller_init(&controller);
+	controller_init(&controller, &dongle);
 
 	/* XXX 1024 - how many FFT bins */
 	fm_sdl_init(&state_sdl, 1024);
@@ -378,7 +286,7 @@ int main(int argc, char **argv)
 	/* Reset endpoint before we start reading from it (mandatory) */
 	verbose_reset_buffer(dongle.dev);
 
-	pthread_create(&controller.thread, NULL, controller_thread_fn, (void *)(&controller));
+	(void) controller_thread_start(&controller);
 	usleep(100000);
 	pthread_create(&dongle.thread, NULL, dongle_thread_fn, (void *)(&dongle));
 	(void) fm_sdl_thread_start(&state_sdl);
@@ -397,8 +305,10 @@ int main(int argc, char **argv)
 	fm_sdl_thread_signal_exit(&state_sdl);
 	rtlsdr_cancel_async(dongle.dev);
 	pthread_join(dongle.thread, NULL);
-	safe_cond_signal(&controller.hop, &controller.hop_m);
-	pthread_join(controller.thread, NULL);
+
+	controller_shutdown(&controller);
+	controller_thread_join(&controller);
+
 	fm_sdl_thread_join(&state_sdl);
 	fm_fft_thread_join(state_fm_fft);
 
