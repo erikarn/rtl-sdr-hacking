@@ -78,6 +78,17 @@ void dongle_init(struct dongle_state *s)
 }
 
 static void
+dongle_call_state_cb(struct dongle_state *s, dongle_cur_state_t state,
+    int error)
+{
+
+	if (s->cb_state.cb == NULL)
+		return;
+
+	s->cb_state.cb(s, s->cb_state.cbdata, state, error);
+}
+
+static void
 *dongle_thread_fn(void *arg)
 {
 	struct dongle_state *s = arg;
@@ -127,7 +138,10 @@ static void
 			fprintf(stderr, "%s: changing freq to %u Hz\n",
 			    __func__,
 			    freq);
+			dongle_call_state_cb(s, FM_SDL_DONGLE_STATE_FREQ_CHANGE, 0);
 			rtlsdr_set_center_freq(s->dev, freq);
+			/* XXX TODO: no way to say which frequency */
+			dongle_call_state_cb(s, FM_SDL_DONGLE_STATE_FREQ_TUNED, 0);
 		}
 
 		/* Ok, now we can read data */
@@ -143,7 +157,6 @@ static void
 
 		s->cb_data.cb(s, s->cb_data.cbdata, &cur, buffer, n_read);
 	}
-	//rtlsdr_read_async(s->dev, rtlsdr_callback, s, 0, s->buf_len);
 	return 0;
 }
 
@@ -154,6 +167,15 @@ dongle_set_callback(struct dongle_state *s, dongle_data_cb *cb, void *cbdata)
 	/* XXX locking */
 	s->cb_data.cb = cb;
 	s->cb_data.cbdata = cbdata;
+}
+
+void
+dongle_set_state_callback(struct dongle_state *s, dongle_state_cb *cb, void *cbdata)
+{
+
+	/* XXX locking */
+	s->cb_state.cb = cb;
+	s->cb_state.cbdata = cbdata;
 }
 
 int

@@ -89,7 +89,21 @@ controller_thread_fn(void *arg)
 		 * previous channel change has happened.
 		 * This is very hacky - it's done just to ensure
 		 * we've synchronised with the completed channel change.
+		 *
+		 * It totally should be more event driven..
 		 */
+		pthread_mutex_lock(&s->hop_m);
+		if (s->freq_hop_wait == 1 && s->freq_hop_wait_ok == 0) {
+			pthread_mutex_unlock(&s->hop_m);
+			fprintf(stderr,
+			    "%s: waiting for pending channel change..\n",
+			    __func__);
+			continue;
+		}
+
+		s->freq_hop_wait = 1;
+		s->freq_hop_wait_ok = 0;
+		pthread_mutex_unlock(&s->hop_m);
 
 		/* hacky hopping */
 		s->freq_now = (s->freq_now + 1) % s->freq_len;
@@ -97,6 +111,29 @@ controller_thread_fn(void *arg)
 		dongle_change_freq(dongle, s->freqs[s->freq_now]);
 	}
 	return 0;
+}
+
+static void
+controller_dongle_state_cb(struct dongle_state *d, void *arg,
+    dongle_cur_state_t state, int error)
+{
+	struct controller_state *s = arg;
+
+	//fprintf(stderr, "%s: called; state=%d\n", __func__, state);
+
+	/*
+	 * Notify the controller that if we're waiting for a channel
+	 * change, we're totally ready for it.
+	 *
+	 * XXX TODO: handle errors!
+	 */
+	if (state == FM_SDL_DONGLE_STATE_FREQ_TUNED) {
+		pthread_mutex_lock(&s->hop_m);
+		if (s->freq_hop_wait) {
+			s->freq_hop_wait_ok = 1;
+		}
+		pthread_mutex_unlock(&s->hop_m);
+	}
 }
 
 void
@@ -109,14 +146,15 @@ controller_init(struct controller_state *s, struct dongle_state *d)
 	s->do_exit = 0;
 	s->dongle = d;
 	s->freq_time = 250;	/* 100mS */
-	pthread_cond_init(&s->hop, NULL);
 	pthread_mutex_init(&s->hop_m, NULL);
+
+	/* Get notifications from the dongle */
+	dongle_set_state_callback(d, controller_dongle_state_cb, s);
 }
 
 void
 controller_cleanup(struct controller_state *s)
 {
-	pthread_cond_destroy(&s->hop);
 	pthread_mutex_destroy(&s->hop_m);
 }
 
@@ -127,7 +165,6 @@ controller_shutdown(struct controller_state *s)
 
 	pthread_mutex_lock(&s->hop_m);
 	s->do_exit = 1;
-	pthread_cond_signal(&s->hop);
 	pthread_mutex_unlock(&s->hop_m);
 }
 

@@ -10,9 +10,10 @@ struct controller_state {
 	int freq_len;
 	int freq_time;	/* how long, in milliseconds, before hopping */
 	int freq_now;
+	int freq_hop_wait; /* waiting for a frequency change to complete */
+	int freq_hop_wait_ok; /* .. and it's completed */
 	int edge;
 	int wb_mode;
-	pthread_cond_t hop;
 	pthread_mutex_t hop_m;
 };
 

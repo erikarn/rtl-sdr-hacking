@@ -24,9 +24,7 @@ typedef enum  {
 } dongle_cur_state_t;
 
 typedef	void dongle_state_cb(struct dongle_state *d, void *cbdata,
-	    dongle_cur_state_t old_status,
-	    dongle_cur_state_t new_status,
-	    int error);
+	    dongle_cur_state_t status, int error);
 
 struct dongle_state
 {
@@ -51,7 +49,7 @@ struct dongle_state
 	} cb_data;
 
 	struct {
-		dongle_data_cb *cb;
+		dongle_state_cb *cb;
 		void *cbdata;
 	} cb_state;
 
@@ -65,6 +63,9 @@ struct dongle_state
 extern	void dongle_init(struct dongle_state *s);
 extern	void dongle_shutdown(struct dongle_state *s);
 extern	void dongle_set_callback(struct dongle_state *s, dongle_data_cb *cb,
+	    void *cbdata);
+extern	void dongle_set_state_callback(struct dongle_state *s,
+	    dongle_state_cb *cb,
 	    void *cbdata);
 extern	int dongle_thread_start(struct dongle_state *s);
 extern	void dongle_thread_join(struct dongle_state *s);
