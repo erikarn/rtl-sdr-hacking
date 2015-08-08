@@ -86,7 +86,7 @@ fm_sdl_process_events(struct fm_sdl_state *fm)
 {
 	SDL_Event event;
 
-	while(SDL_PollEvent(&event)) {
+	while(SDL_WaitEvent(&event)) {
 		switch(event.type) {
 		case SDL_KEYDOWN:
 			/* Handle key presses. */
