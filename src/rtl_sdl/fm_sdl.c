@@ -10,6 +10,7 @@
 #include <sys/types.h>
 #include <err.h>
 #include <pthread.h>
+#include <pthread_np.h>
 #include <math.h>
 
 #include <SDL/SDL.h>
@@ -336,6 +337,7 @@ fm_sdl_thread_start(struct fm_sdl_state *fm)
 		warn("%s: pthread_create", __func__);
 		return (-1);
 	}
+	pthread_set_name_np(fm->thread, "fm_sdl");
 
 	return (r);
 }

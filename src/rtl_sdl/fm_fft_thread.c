@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <err.h>
 #include <pthread.h>
+#include <pthread_np.h>
 #include <sys/types.h>
 #include <math.h>
 
@@ -87,6 +88,8 @@ fm_fft_thread_start(struct fm_fft_thread *ft)
 		warn("%s: pthread_create", __func__);
 		return (-1);
 	}
+
+	pthread_set_name_np(ft->ft_thr, "fft_thread");
 
 	return (0);
 }
