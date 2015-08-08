@@ -1,0 +1,95 @@
+
+Notes from (coming in late) auto-detecting signals using SDR:
+(TODO: get the talk from youtube from defcon wifi hut 2015?)
+
+* auto-detecting psk, bpsk, qpsk?
+  - raising FFT results to the power of 2, 4, etc
+  - .. why?
+
+  - eg - raise to power of 4, see two peaks - QPSK
+
+* decimation?
+
+* mixing signals in software to get things back down
+  to baseband?
+
+* clock drift?
+
+Baud rate:
+
+* baud rate - related to the distance between the outer peaks
+  and DC
+
+* multiply the signal with a single sample delayed version,
+  discard phase info, take FFT of this, look at peak - first peak
+  is the baud rate.
+
+  (Why?)
+
+* "cyclo-stationary analysis"
+
+* converting the fft bin number back to the baud rate - remember,
+  the fft is on a sample at a certain rate / size, so we have to
+  calculate it back to the baud rate.
+
+clock recovery?
+
+* without it, you end up with constellation plots which hvae things
+  in the centre
+
+* need to figure out how to sync the sample rate so we sample at
+  high signal amplitudes
+
+* "kostas / costas loop?" - frequency locking, results in removing
+  extra frequency components
+
+Ok, so now we have a stream of bits - now what?
+
+* the stream may be covolution coded, whitened to distribute the
+  power across the spectrum, other FEC, etc.
+
+* You don't know if the transmitter / receiver is synced or not -
+  eg if it's rotated 90 degrees, inverted, flipped (conjugated), etc.
+* .. so you typically have a preamble that the receiver synchronises
+  against and can used pre-computed combinations to find the highest
+  correlation and thus return the transform to use.
+
+* .. ok, so how do we abuse viterbi to do this on the receive side?
+* .. you modify the decoder (eg CC-SDS in gnuradio - hard-coded to the
+  "voyager" FEC parameters) so you get the output bits and the "path metric"
+ - ie, how well the decoder is actually doing
+ - path metric of zero - "best" - it mapped through a perfect path
+   through the receive trellis decoder
+
+ So then you modify something to try all the combinations and feeds
+ it into viterbi to see what the path metrics are.
+ - conjugation
+ - phase rotation
+ - inversion
+ - delay (in the viterbi samples?)
+
+ This is the "auto-fec" block.
+
+Ok, now we have a reconstructed stream of bits, now what?
+
+(My questions):
+  - how'd he figure out what the FEC coding length was?
+  - he used the voyager convolutional code
+
+Here - there's likely a scrambler distributing the signal.
+  - additive scrambler
+  - multiplicative scrambler
+
+  eg: iess308 scrambler - popular in satellite communications
+
+Next - you saw structure - but you're seeing long strings of zeros and
+long strings of ones.  You're onto something, but you need another
+transform.
+
+eg - differentially decode?
+what program was he using?
+
+Website: http://wiki.spench.net/wiki/Presentations
+
+---
+
