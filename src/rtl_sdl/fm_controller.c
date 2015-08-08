@@ -28,7 +28,9 @@ optimal_settings(struct controller_state *cs, int freq, int rate)
 	int capture_freq, capture_rate;
 	struct dongle_state *d = cs->dongle;
 
+#if 0
 	fprintf(stderr, "Freq: %d, rate: %d\n", freq, rate);
+#endif
 	capture_freq = freq;
 	capture_rate = rate;
 

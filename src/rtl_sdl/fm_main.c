@@ -182,14 +182,14 @@ int main(int argc, char **argv)
 	int custom_ppm = 0;
 
 	dongle_init(&dongle);
-	dongle.rate = 2048000;
+	dongle.rate = DEF_SAMPLE_RATE;
 	dongle_set_callback(&dongle, dongle_data_callback, NULL);
 	controller_init(&controller, &dongle);
 
 	/* XXX 1024 - how many FFT bins */
-	fm_sdl_init(&state_sdl, 1024);
+	fm_sdl_init(&state_sdl, DEF_FFT_POINTS);
 
-	state_fm_fft = fm_fft_thread_create(1024, 2048000);
+	state_fm_fft = fm_fft_thread_create(DEF_FFT_POINTS, DEF_SAMPLE_RATE);
 	if (state_fm_fft == NULL) {
 		fprintf(stderr, "Failed to create FFT thread\n");
 		exit(127);

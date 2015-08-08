@@ -68,7 +68,7 @@
 
 void dongle_init(struct dongle_state *s)
 {
-	s->rate = 1024000;
+	s->rate = DEF_SAMPLE_RATE;
 	s->gain = AUTO_GAIN; // tenths of a dB
 	s->mute = 0;
 	s->direct_sampling = 0;

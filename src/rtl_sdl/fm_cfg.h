@@ -7,6 +7,8 @@
 
 #define FREQUENCIES_LIMIT               1000
 
+#define	DEF_SAMPLE_RATE			2048000
+#define	DEF_FFT_POINTS			1024
 
 #endif
 

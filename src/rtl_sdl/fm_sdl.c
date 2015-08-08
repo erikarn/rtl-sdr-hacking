@@ -359,6 +359,7 @@ fm_sdl_init(struct fm_sdl_state *fs, int npoints)
 	(void) pthread_rwlock_init(&fs->rw, NULL);
 	(void) pthread_mutex_init(&fs->ready_m, NULL);
 	(void) pthread_cond_init(&fs->ready, NULL);
+
 	/*
 	 * For now, the screen size must equal the number of FFT points.
 	 */
