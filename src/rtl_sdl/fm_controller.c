@@ -79,19 +79,22 @@ controller_thread_fn(void *arg)
 
 	while (! s->do_exit) {
 		/* XXX locking? */
-		pthread_mutex_lock(&s->hop_m);
-		pthread_cond_wait(&s->hop, &s->hop_m);
-		pthread_mutex_unlock(&s->hop_m);
+		usleep(s->freq_time * 1000);		/* XXX just for now */
 
 		if (s->freq_len <= 1) {
 			continue;}
-#if 0
+
+		/*
+		 * Wait and see if we've been signaled that the
+		 * previous channel change has happened.
+		 * This is very hacky - it's done just to ensure
+		 * we've synchronised with the completed channel change.
+		 */
+
 		/* hacky hopping */
 		s->freq_now = (s->freq_now + 1) % s->freq_len;
-		optimal_settings(s->freqs[s->freq_now], demod.rate_in);
-		rtlsdr_set_center_freq(dongle.dev, dongle.freq);
-		dongle.mute = BUFFER_DUMP;
-#endif
+		optimal_settings(s, s->freqs[s->freq_now], dongle->rate);
+		dongle_change_freq(dongle, s->freqs[s->freq_now]);
 	}
 	return 0;
 }
@@ -105,6 +108,7 @@ controller_init(struct controller_state *s, struct dongle_state *d)
 	s->wb_mode = 0;
 	s->do_exit = 0;
 	s->dongle = d;
+	s->freq_time = 250;	/* 100mS */
 	pthread_cond_init(&s->hop, NULL);
 	pthread_mutex_init(&s->hop_m, NULL);
 }

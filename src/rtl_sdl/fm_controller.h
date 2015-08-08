@@ -8,6 +8,7 @@ struct controller_state {
 	uint32_t freqs[FREQUENCIES_LIMIT];
 	struct dongle_state *dongle;
 	int freq_len;
+	int freq_time;	/* how long, in milliseconds, before hopping */
 	int freq_now;
 	int edge;
 	int wb_mode;
