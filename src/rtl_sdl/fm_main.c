@@ -89,10 +89,6 @@ static void sighandler(int signum)
 	rtlsdr_cancel_async(dongle.dev);
 }
 
-/* more cond dumbness */
-#define safe_cond_signal(n, m) pthread_mutex_lock(m); pthread_cond_signal(n); pthread_mutex_unlock(m)
-#define safe_cond_wait(n, m) pthread_mutex_lock(m); pthread_cond_wait(n, m); pthread_mutex_unlock(m)
-
 static void
 dongle_data_callback(struct dongle_state *s, void *cbdata,
     const struct dongle_cur_state *cs, unsigned char *buf, uint32_t len)
