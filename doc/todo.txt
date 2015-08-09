@@ -1,0 +1,50 @@
+* go re-read about offset tuning and how we can do it in general here,
+  why it was doing a 90 degree offset, etc.
+* sig id wiki
+* http://sdr.ninja/
+
+* bring over the window functions, droop compensation, etc from the
+  rtl_power.c code
+
+FFT:
+
+* all the math for figuring out the power per-bin likely needs fixing,
+  so write it all out and then fix it
+* Implement FFT windows over the incoming data, rather than just
+  doing it over the first samples in each sample block from rtl-sdr.
+* .. make the FFT block configurable.
+* .. make it take in a stream, and implement a FIFO
+* .. upon each reception of a buffer, continue running the window
+  (ie, so it windows over the old+new data, not just over the new
+  samples)
+
+Windowing:
+
+* It's likely that the windowing + FFT stuff should be run as a separate
+  function block
+* .. ie, we say "here's a windowing function, here's how big the window is
+  and what offset / rate it is, so spit out data at this rate"
+* .. and then the FFT would hm, take in exactly a windows worth of data
+  (ie, "bin count") and spit out data
+* So - if we wanted no windowing function and just an FFT over a whole
+  second worth of samples, the window size is 1 second of samples, and
+  the offset is 1 second of samples.
+
+* Peak hold / average:
+
+* Data flow:
+  - each block can be different kinds of data - real samples, complex samples
+  - .. and different rates
+  - .. and different types (audio, baseband, RF, etc)
+  - .. with different gain settings
+
+  So let's plan out some kind of circular buffer + message thing that we can
+  use to represent the above, and then use that for each functional block
+
+  .. with callbacks to spit out data as appropriate to subscribers
+
+threading/SMP/etc?
+
+  - how can we describe what can be run in different threads, versus what
+    has to be run in-step?
+  - look for loops in the graph? stuff with loops can't be threaded for now?
