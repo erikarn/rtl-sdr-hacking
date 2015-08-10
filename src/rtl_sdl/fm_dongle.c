@@ -148,7 +148,12 @@ static void
 		r = rtlsdr_read_sync(s->dev, buffer, OUT_BLOCK_SIZE, &n_read);
 		if (r < 0) {
 			fprintf(stderr, "rtlsdr_read_sync: failed\n");
-			break;
+			usleep(100 * 1000);	/* Sleep 100mS, hope we recover */
+
+			/*
+			 * XXX TODO: should communicate we've missed samples
+			 * upstream
+			 */
 		}
 		cur.freq = s->freq;
 		cur.rate = s->rate;
