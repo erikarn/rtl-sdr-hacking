@@ -112,3 +112,9 @@ demod_set(struct demod_state *s, mode_demod_cb *cb)
 {
 	s->mode_demod = cb;
 }
+
+void
+full_demod(struct demod_state *s)
+{
+
+}

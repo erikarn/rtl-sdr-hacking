@@ -98,6 +98,8 @@ dongle_data_callback(struct dongle_state *s, void *cbdata,
     const struct dongle_cur_state *cs, unsigned char *buf, uint32_t len)
 {
 	int i;
+	/* XXX global variables, ick */
+	struct demod_state *d = &state_demod;
 
 	if (s->mute) {
 		for (i=0; i<s->mute; i++) {
@@ -114,6 +116,11 @@ dongle_data_callback(struct dongle_state *s, void *cbdata,
 		s->buf16[i] -= 127;
 	}
 
+	/*
+	 * TODO: this isn't yet implemented in the demod or filter
+	 * or config phases. But to avoid DC it would be nice to
+	 * eventually figure out.
+	 */
 #if 0
 	/* Rotate if required */
 	if (!s->offset_tuning) {
@@ -122,6 +129,20 @@ dongle_data_callback(struct dongle_state *s, void *cbdata,
 
 	/* DC correct the interleaved data */
 	remove_dc(s->buf16, len);
+
+	/*
+	 * For now there's no separate thread for demod, so just
+	 * direct dispatch into it
+	 */
+	memcpy(d->lowpassed, s->buf16, 2*len);
+	d->lp_len = len;
+	full_demod(d);
+
+	/*
+	 * Here's where it'd be put into an output thread for
+	 * eventual echo'ing to stdout(), or (for what we want)
+	 * {audio output, capture}.
+	 */
 
 	/* New FFT thread */
 	fm_fft_thread_add_samples(state_fm_fft, s->buf16, len);
