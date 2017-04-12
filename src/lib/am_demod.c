@@ -8,6 +8,9 @@
 
 #include <math.h>
 
+#include "demod.h"
+#include "am_demod.h"
+
 void
 am_demod(struct demod_state *fm)
 // todo, fix this extreme laziness

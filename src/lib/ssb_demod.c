@@ -8,6 +8,9 @@
 
 #include <math.h>
 
+#include "demod.h"
+#include "ssb_demod.h"
+
 void
 usb_demod(struct demod_state *fm)
 {

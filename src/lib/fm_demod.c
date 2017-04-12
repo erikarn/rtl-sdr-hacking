@@ -1,4 +1,4 @@
-
+#if 0
 #include <errno.h>
 #include <signal.h>
 #include <string.h>
@@ -30,7 +30,7 @@ int cic_9_tables[][10] = {
 	{9, -199, -362, 5303, -25505, 77489, -25505, 5303, -362, -199},
 };
 
-staitc void
+static void
 multiply(int ar, int aj, int br, int bj, int *cr, int *cj)
 {
 	*cr = ar*br - aj*bj;
@@ -127,6 +127,8 @@ int polar_disc_lut(int ar, int aj, int br, int bj)
 	return 0;
 }
 
+#endif
+
 /*
  * rtl-sdr, turns your Realtek RTL2832 based DVB dongle into a SDR receiver
  * Copyright (C) 2012 by Steve Markgraf <steve@steve-m.de>
@@ -189,10 +191,11 @@ int polar_disc_lut(int ar, int aj, int br, int bj)
 #include <pthread.h>
 #include <libusb.h>
 
-#include "fm_cfg.h"
+//#include "fm_cfg.h"
 
 #include "rtl-sdr.h"
 #include "convenience.h"
+#include "demod.h"
 #include "fm_demod.h"
 
 static int *atan_lut = NULL;
