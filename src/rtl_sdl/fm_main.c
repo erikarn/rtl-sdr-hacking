@@ -24,6 +24,9 @@
 #include "fm_fft.h"
 #include "fm_fft_thread.h"
 
+#include "demod.h"
+#include "fm_demod.h"
+
 int do_exit = 0;
 
 // multiple of these, eventually
@@ -31,6 +34,7 @@ struct dongle_state dongle;
 struct controller_state controller;
 struct fm_sdl_state state_sdl;
 struct fm_fft_thread *state_fm_fft;
+struct demod_state state_demod;
 
 void usage(void)
 {
@@ -181,6 +185,10 @@ int main(int argc, char **argv)
 	dongle.rate = DEF_SAMPLE_RATE;
 	dongle_set_callback(&dongle, dongle_data_callback, NULL);
 	controller_init(&controller, &dongle);
+
+	/* For now - straight FM demod; default buf length, 24KHz sample rate */
+	demod_init(&state_demod, NULL, MAXIMUM_BUF_LENGTH, 24000);
+	demod_set(&state_demod, fm_demod);
 
 	/* XXX 1024 - how many FFT bins */
 	fm_sdl_init(&state_sdl, DEF_FFT_POINTS);
