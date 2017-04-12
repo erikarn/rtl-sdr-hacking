@@ -1,6 +1,10 @@
 #ifndef	__DEMOD_H__
 #define	__DEMOD_H__
 
+struct demod_state;
+
+typedef void mode_demod_cb(struct demod_state *);
+
 struct demod_state
 {
 	int      exit_flag;
@@ -30,7 +34,7 @@ struct demod_state
 	int      now_lpr;
 	int      prev_lpr_index;
 	int      dc_block, dc_avg;
-	void     (*mode_demod)(struct demod_state*);
+	mode_demod_cb *mode_demod;
 	pthread_rwlock_t rw;
 	pthread_cond_t ready;
 	pthread_mutex_t ready_m;
@@ -49,5 +53,7 @@ extern	int atan_lut_init(void);
 extern	void raw_demod(struct demod_state *fm);
 //extern	void usb_demod(struct demod_state *fm);
 //extern	void lsb_demod(struct demod_state *fm);
+
+extern		void demod_set(struct demod_state *fm, mode_demod_cb *cb);
 
 #endif

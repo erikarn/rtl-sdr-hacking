@@ -106,3 +106,9 @@ void demod_cleanup(struct demod_state *s)
 	pthread_mutex_destroy(&s->ready_m);
 }
 
+
+void
+demod_set(struct demod_state *s, mode_demod_cb *cb)
+{
+	s->mode_demod = cb;
+}
