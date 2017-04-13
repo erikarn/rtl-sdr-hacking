@@ -9,7 +9,13 @@
 
 #include <math.h>
 
-staitc void
+#include "polar_discriminant.h"
+
+static int *atan_lut = NULL;
+static int atan_lut_size = 131072; /* 512 KB */
+static int atan_lut_coef = 8;
+
+static void
 multiply(int ar, int aj, int br, int bj, int *cr, int *cj)
 {
 	*cr = ar*br - aj*bj;

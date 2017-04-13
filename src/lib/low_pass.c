@@ -11,6 +11,8 @@
 #include <pthread.h>
 #include <libusb.h>
 
+#include "demod.h"
+
 void
 low_pass(struct demod_state *d)
 /* simple square window FIR */

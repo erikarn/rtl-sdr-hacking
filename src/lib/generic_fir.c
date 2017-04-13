@@ -9,6 +9,8 @@
 
 #include <math.h>
 
+#include "generic_fir.h"
+
 void
 generic_fir(int16_t *data, int length, int *fir, int16_t *hist)
 /* Okay, not at all generic.  Assumes length 9, fix that eventually. */

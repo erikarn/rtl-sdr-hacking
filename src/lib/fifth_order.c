@@ -9,6 +9,8 @@
 
 #include <math.h>
 
+#include "fifth_order.h"
+
 void
 fifth_order(int16_t *data, int length, int16_t *hist)
 /* for half of interleaved data */

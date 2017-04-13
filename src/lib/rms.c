@@ -8,6 +8,8 @@
 
 #include <math.h>
 
+#include "rms.h"
+
 int
 rms(int16_t *samples, int len, int step)
 /* largely lifted from rtl_power */

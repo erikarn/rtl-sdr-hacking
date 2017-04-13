@@ -8,6 +8,8 @@
 
 #include <math.h>
 
+#include "demod.h"
+
 void
 deemph_filter(struct demod_state *fm)
 {
