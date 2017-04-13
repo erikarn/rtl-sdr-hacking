@@ -12,6 +12,7 @@ SRCS+=		demod.c
 SRCS+=		am_demod.c
 SRCS+=		fm_demod.c
 SRCS+=		ssb_demod.c
+SRCS+=		raw_demod.c
 SRCS+=		generic_fir.c fifth_order.c
 SRCS+=		low_pass.c polar_discriminant.c
 SRCS+=		remove_dc.c resample.c rms.c mad.c

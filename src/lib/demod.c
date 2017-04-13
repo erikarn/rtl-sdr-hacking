@@ -63,7 +63,9 @@
 #include "rtl-sdr.h"
 #include "convenience.h"
 #include "demod.h"
+
 #include "fm_demod.h"
+#include "raw_demod.h"
 
 #include "dc_block.h"
 #include "deemph.h"

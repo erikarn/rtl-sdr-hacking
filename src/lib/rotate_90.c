@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdint.h>
 
+#include "rotate_90.h"
+
 void
 rotate_90(int16_t *buf, uint32_t len)
 /* 90 rotation is 1+0j, 0+1j, -1+0j, 0-1j

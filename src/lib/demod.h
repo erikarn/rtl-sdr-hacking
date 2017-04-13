@@ -46,13 +46,6 @@ extern	void full_demod(struct demod_state *d);
 extern	void demod_init(struct demod_state *s, struct output_state *o,
 	    int max_buf_length, int sample_rate);
 extern	void demod_cleanup(struct demod_state *s);
-extern	int atan_lut_init(void);
-
-//extern	void fm_demod(struct demod_state *fm);
-//extern	void am_demod(struct demod_state *fm);
-extern	void raw_demod(struct demod_state *fm);
-//extern	void usb_demod(struct demod_state *fm);
-//extern	void lsb_demod(struct demod_state *fm);
 
 extern		void demod_set(struct demod_state *fm, mode_demod_cb *cb);
 

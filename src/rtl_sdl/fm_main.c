@@ -26,6 +26,7 @@
 
 #include "demod.h"
 #include "fm_demod.h"
+#include "rotate_90.h"
 
 int do_exit = 0;
 
@@ -136,6 +137,10 @@ dongle_data_callback(struct dongle_state *s, void *cbdata,
 	 */
 	memcpy(d->lowpassed, s->buf16, 2*len);
 	d->lp_len = len;
+
+	/*
+	 * Do demodulation.  This puts data into (d->result, 2*d->result_len bytes).
+	 */
 	full_demod(d);
 
 	/*
