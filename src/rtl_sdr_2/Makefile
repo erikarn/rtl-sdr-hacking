@@ -1,9 +1,9 @@
 
 PROG=main
 SRCS=rtl_fm.c convenience.c
-NO_MAN=1
+MK_MAN=no
 LDADD=-lSDL -lGL -lGLU -lfftw3 -lm -lpthread -lrtlsdr
-CFLAGS+=	-I/usr/local/include/ -g -ggdb
+CFLAGS+=	-I/usr/local/include/ -g -ggdb -Wall
 LDFLAGS+=	-L/usr/local/lib/
 
 .include <bsd.prog.mk>
