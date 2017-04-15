@@ -89,8 +89,8 @@ static int atan_lut_coef = 8;
 #include "output.h"
 #include "controller.h"
 
+#include "fifth_order.h"
 #include "rotate_90.h"
-
 #include "low_pass.h"
 
 // multiple of these, eventually
