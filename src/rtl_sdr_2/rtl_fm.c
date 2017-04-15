@@ -157,6 +157,7 @@ sighandler(int signum)
 	if (CTRL_C_EVENT == signum) {
 		fprintf(stderr, "Signal caught, exiting!\n");
 		do_exit = 1;
+		output_set_exit(&output);
 		rtlsdr_cancel_async(dongle.dev);
 		return TRUE;
 	}
@@ -167,6 +168,7 @@ static void sighandler(int signum)
 {
 	fprintf(stderr, "Signal caught, exiting!\n");
 	do_exit = 1;
+		output_set_exit(&output);
 	rtlsdr_cancel_async(dongle.dev);
 }
 #endif
@@ -598,6 +600,7 @@ static void *demod_thread_fn(void *arg)
 {
 	struct demod_state *d = arg;
 	struct output_state *o = d->output_target;
+
 	while (!do_exit) {
 		safe_cond_wait(&d->ready, &d->ready_m);
 		pthread_rwlock_wrlock(&d->rw);
@@ -605,30 +608,15 @@ static void *demod_thread_fn(void *arg)
 		pthread_rwlock_unlock(&d->rw);
 		if (d->exit_flag) {
 			do_exit = 1;
+			output_set_exit(&output);
 		}
 		if (d->squelch_level && d->squelch_hits > d->conseq_squelch) {
 			d->squelch_hits = d->conseq_squelch + 1;  /* hair trigger */
 			safe_cond_signal(&controller.hop, &controller.hop_m);
 			continue;
 		}
-		pthread_rwlock_wrlock(&o->rw);
-		memcpy(o->result, d->result, 2*d->result_len);
-		o->result_len = d->result_len;
-		pthread_rwlock_unlock(&o->rw);
-		safe_cond_signal(&o->ready, &o->ready_m);
-	}
-	return 0;
-}
 
-static void *output_thread_fn(void *arg)
-{
-	struct output_state *s = arg;
-	while (!do_exit) {
-		// use timedwait and pad out under runs
-		safe_cond_wait(&s->ready, &s->ready_m);
-		pthread_rwlock_rdlock(&s->rw);
-		fwrite(s->result, 2, s->result_len, s->file);
-		pthread_rwlock_unlock(&s->rw);
+		output_append(o, (const char *) d->result, d->result_len * 2);
 	}
 	return 0;
 }
@@ -762,21 +750,6 @@ void demod_init(struct demod_state *s)
 }
 
 void demod_cleanup(struct demod_state *s)
-{
-	pthread_rwlock_destroy(&s->rw);
-	pthread_cond_destroy(&s->ready);
-	pthread_mutex_destroy(&s->ready_m);
-}
-
-void output_init(struct output_state *s)
-{
-	s->rate = DEFAULT_SAMPLE_RATE;
-	pthread_rwlock_init(&s->rw, NULL);
-	pthread_cond_init(&s->ready, NULL);
-	pthread_mutex_init(&s->ready_m, NULL);
-}
-
-void output_cleanup(struct output_state *s)
 {
 	pthread_rwlock_destroy(&s->rw);
 	pthread_cond_destroy(&s->ready);
@@ -1011,7 +984,7 @@ int main(int argc, char **argv)
 
 	pthread_create(&controller.thread, NULL, controller_thread_fn, (void *)(&controller));
 	usleep(100000);
-	pthread_create(&output.thread, NULL, output_thread_fn, (void *)(&output));
+	output_run(&output);
 	pthread_create(&demod.thread, NULL, demod_thread_fn, (void *)(&demod));
 	pthread_create(&dongle.thread, NULL, dongle_thread_fn, (void *)(&dongle));
 
