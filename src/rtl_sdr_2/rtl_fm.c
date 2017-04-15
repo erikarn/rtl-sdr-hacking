@@ -94,6 +94,8 @@ static int atan_lut_coef = 8;
 #include "low_pass.h"
 #include "generic_fir.h"
 
+#include "output_file.h"
+
 // multiple of these, eventually
 struct dongle_state dongle;
 struct demod_state demod;
@@ -799,6 +801,7 @@ int main(int argc, char **argv)
 	int r, opt;
 	int dev_given = 0;
 	int custom_ppm = 0;
+	const char *filename;
 	dongle_init(&dongle);
 	demod_init(&demod);
 	output_init(&output);
@@ -918,9 +921,9 @@ int main(int argc, char **argv)
 		demod.terminate_on_squelch = 0;}
 
 	if (argc <= optind) {
-		output.filename = "-";
+		filename = "-";
 	} else {
-		output.filename = argv[optind];
+		filename = argv[optind];
 	}
 
 	ACTUAL_BUF_LENGTH = lcm_post[demod.post_downsample] * DEFAULT_BUF_LENGTH;
@@ -964,17 +967,13 @@ int main(int argc, char **argv)
 
 	verbose_ppm_set(dongle.dev, dongle.ppm_error);
 
-	if (strcmp(output.filename, "-") == 0) { /* Write samples to stdout */
-		output.file = stdout;
-#ifdef _WIN32
-		_setmode(_fileno(output.file), _O_BINARY);
-#endif
-	} else {
-		output.file = fopen(output.filename, "wb");
-		if (!output.file) {
-			fprintf(stderr, "Failed to open %s\n", output.filename);
-			exit(1);
-		}
+	/*
+	 * If we're using a file: initialise the output controller
+	 * to output to a file, and then set the filename.
+	 */
+	output_file_init(&output);
+	if (output_file_set_filename(&output, filename) != 0) {
+		exit(1);
 	}
 
 	//r = rtlsdr_set_testmode(dongle.dev, 1);
@@ -1006,13 +1005,12 @@ int main(int argc, char **argv)
 	safe_cond_signal(&controller.hop, &controller.hop_m);
 	pthread_join(controller.thread, NULL);
 
+	output_close(&output);
+
 	//dongle_cleanup(&dongle);
 	demod_cleanup(&demod);
 	output_cleanup(&output);
 	controller_cleanup(&controller);
-
-	if (output.file != stdout) {
-		fclose(output.file);}
 
 	rtlsdr_close(dongle.dev);
 	return r >= 0 ? r : -r;

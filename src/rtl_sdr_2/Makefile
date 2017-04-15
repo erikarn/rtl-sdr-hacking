@@ -4,6 +4,7 @@ PROG=main
 SRCS=	rtl_fm.c convenience.c rotate_90.c
 SRCS+=	output.c
 SRCS+=	low_pass.c fifth_order.c generic_fir.c
+SRCS+=	output_file.c
 
 MK_MAN=no
 LDADD=-lSDL -lGL -lGLU -lfftw3 -lm -lpthread -lrtlsdr

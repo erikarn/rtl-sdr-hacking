@@ -26,7 +26,8 @@ static void
 		pthread_rwlock_rdlock(&s->rw);
 
 		/* NOTE: This is supposed to write lots of int16_t entries .. */
-		fwrite(s->result, 2, s->result_len, s->file);
+		output_write(s);
+//		fwrite(s->result, 2, s->result_len, s->file);
 
 		pthread_rwlock_unlock(&s->rw);
 	}
@@ -77,3 +78,17 @@ void output_cleanup(struct output_state *s)
 	pthread_mutex_destroy(&s->ready_m);
 }
 
+
+int
+output_close(struct output_state *s)
+{
+
+	return (s->output_close_cb(s));
+}
+
+int
+output_write(struct output_state *s)
+{
+
+	return (s->output_write_cb(s));
+}
