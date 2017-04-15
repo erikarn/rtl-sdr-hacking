@@ -1,7 +1,7 @@
 
 PROG=main
 SRCS=rtl_fm.c convenience.c rotate_90.c
-SRCS+=	low_pass.c
+SRCS+=	low_pass.c fifth_order.c
 MK_MAN=no
 LDADD=-lSDL -lGL -lGLU -lfftw3 -lm -lpthread -lrtlsdr
 CFLAGS+=	-I/usr/local/include/ -g -ggdb -Wall
