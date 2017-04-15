@@ -25,8 +25,8 @@ static void
 		safe_cond_wait(&s->ready, &s->ready_m);
 		pthread_rwlock_rdlock(&s->rw);
 
-		/* NOTE: This is supposed to write lots of uint16_t entries .. */
-		fwrite(s->result, 1, s->result_len, s->file);
+		/* NOTE: This is supposed to write lots of int16_t entries .. */
+		fwrite(s->result, 2, s->result_len, s->file);
 
 		pthread_rwlock_unlock(&s->rw);
 	}
@@ -48,12 +48,12 @@ output_set_exit(struct output_state *s)
 }
 
 void
-output_append(struct output_state *s, const char *buf, int len)
+output_append(struct output_state *s, const int16_t *buf, int len)
 {
 
 	/* XXX TODO: this doesn't /really/ append ... */
 	pthread_rwlock_wrlock(&s->rw);
-	memcpy(s->result, buf, len);
+	memcpy(s->result, buf, len * 2);
 	s->result_len = len;
 	pthread_rwlock_unlock(&s->rw);
 	safe_cond_signal(&s->ready, &s->ready_m);

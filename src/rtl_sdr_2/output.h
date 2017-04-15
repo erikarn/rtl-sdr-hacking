@@ -25,7 +25,7 @@ struct output_state {
 
 extern	void output_run(struct output_state *s);
 extern	void output_set_exit(struct output_state *s);
-extern	void output_append(struct output_state *s, const char *buf, int len);
+extern	void output_append(struct output_state *s, const int16_t *buf, int len);
 extern	void output_init(struct output_state *s);
 extern	void output_cleanup(struct output_state *s);
 

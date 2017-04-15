@@ -616,7 +616,7 @@ static void *demod_thread_fn(void *arg)
 			continue;
 		}
 
-		output_append(o, (const char *) d->result, d->result_len * 2);
+		output_append(o, d->result, d->result_len);
 	}
 	return 0;
 }
