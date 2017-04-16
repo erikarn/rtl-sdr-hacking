@@ -92,3 +92,11 @@ output_write(struct output_state *s)
 
 	return (s->output_write_cb(s));
 }
+
+int
+output_set_rate(struct output_state *s, int rate)
+{
+
+	s->rate = rate;
+	return (0);
+}

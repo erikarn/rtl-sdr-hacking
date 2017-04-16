@@ -30,5 +30,6 @@ extern	void output_init(struct output_state *s);
 extern	void output_cleanup(struct output_state *s);
 extern	int output_write(struct output_state *s);
 extern	int output_close(struct output_state *s);
+extern	int output_set_rate(struct output_state *s, int rate);
 
 #endif	/* __OUTPUT_H__ */

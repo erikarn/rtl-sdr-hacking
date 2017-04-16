@@ -95,6 +95,7 @@ static int atan_lut_coef = 8;
 #include "generic_fir.h"
 
 #include "output_file.h"
+#include "output_alsa.h"
 
 // multiple of these, eventually
 struct dongle_state dongle;
@@ -801,6 +802,7 @@ int main(int argc, char **argv)
 	int r, opt;
 	int dev_given = 0;
 	int custom_ppm = 0;
+	int output_rate_set = 0;
 	const char *filename;
 	dongle_init(&dongle);
 	demod_init(&demod);
@@ -835,8 +837,9 @@ int main(int argc, char **argv)
 			demod.rate_out = (uint32_t)atofs(optarg);
 			break;
 		case 'r':
-			output.rate = (int)atofs(optarg);
+			output_set_rate(&output, (int) atofs(optarg));
 			demod.rate_out2 = (int)atofs(optarg);
+			output_rate_set = 1;
 			break;
 		case 'o':
 			fprintf(stderr, "Warning: -o is very buggy\n");
@@ -912,8 +915,15 @@ int main(int argc, char **argv)
 	/* quadruple sample_rate to limit to Δθ to ±π/2 */
 	demod.rate_in *= demod.post_downsample;
 
-	if (!output.rate) {
-		output.rate = demod.rate_out;}
+	/*
+	 * Output rate has to be set before the output module is
+	 * initialised, or we won't get the "right" width communicated
+	 * to ALSA.
+	 */
+	if (demod.rate_out2 != -1)
+		output_set_rate(&output, demod.rate_out2);
+	else if (output_rate_set == 0)
+		output_set_rate(&output, demod.rate_out);
 
 	sanity_checks();
 
@@ -967,6 +977,7 @@ int main(int argc, char **argv)
 
 	verbose_ppm_set(dongle.dev, dongle.ppm_error);
 
+#if 0
 	/*
 	 * If we're using a file: initialise the output controller
 	 * to output to a file, and then set the filename.
@@ -975,6 +986,10 @@ int main(int argc, char **argv)
 	if (output_file_set_filename(&output, filename) != 0) {
 		exit(1);
 	}
+#else
+	output_alsa_init(&output);
+	output_alsa_set_device(&output, "default");
+#endif
 
 	//r = rtlsdr_set_testmode(dongle.dev, 1);
 

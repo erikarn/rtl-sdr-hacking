@@ -109,11 +109,9 @@ output_alsa_set_hw_params(struct output_state *s)
 	 * Attempt to set exact sample rate. There's a "set_rate_near"
 	 * which takes a speed/dir and returns what the hardware
 	 * was actually configured as.
-	 *
-	 * XXX hard-coded decode playback rate (32,000 Hz)
 	 */
 	if ((err = snd_pcm_hw_params_set_rate(sa->phdl,
-	    hw_params, 32000, 0)) < 0) {
+	    hw_params, s->rate, 0)) < 0) {
 		fprintf (stderr, "cannot set sample rate (%s)\n",
 			 snd_strerror (err));
 		return (err);
@@ -218,6 +216,8 @@ output_alsa_set_device(struct output_state *s, const char *devname)
 		    snd_strerror (err));
 		return (-1);
 	}
+
+	printf("%s: output rate: %d\n", __func__, s->rate);
 
 	/* XXX TODO: explicitly set non-blocking by calling snd_pcm_nonblock() ? */
 
