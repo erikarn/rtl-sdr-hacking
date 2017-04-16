@@ -978,19 +978,19 @@ int main(int argc, char **argv)
 
 	verbose_ppm_set(dongle.dev, dongle.ppm_error);
 
-#if 0
-	/*
-	 * If we're using a file: initialise the output controller
-	 * to output to a file, and then set the filename.
-	 */
-	output_file_init(&output);
-	if (output_file_set_filename(&output, filename) != 0) {
-		exit(1);
+	if (strncmp(filename, "alsa:", 5) == 0) {
+		output_alsa_init(&output);
+		output_alsa_set_device(&output, "default");
+	} else {
+		/*
+		 * If we're using a file: initialise the output controller
+		 * to output to a file, and then set the filename.
+		 */
+		output_file_init(&output);
+		if (output_file_set_filename(&output, filename) != 0) {
+			exit(1);
+		}
 	}
-#else
-	output_alsa_init(&output);
-	output_alsa_set_device(&output, "default");
-#endif
 
 	//r = rtlsdr_set_testmode(dongle.dev, 1);
 
