@@ -35,6 +35,10 @@ output_alsa_write_cb(struct output_state *s)
 		    __func__,
 		    snd_strerror (err));
 	}
+
+	if (err < 0) {
+		snd_pcm_recover(sa->phdl, err, 0);
+	}
 #endif
 
 	return (0);
@@ -132,7 +136,7 @@ output_alsa_set_hw_params(struct output_state *s)
 	 * XXX hard-coded size
 	 */
 	err = snd_pcm_hw_params_set_buffer_size(sa->phdl,
-	    hw_params, 32768);
+	    hw_params, 65536);
 	if (err < 0) {
 		fprintf (stderr, "cannot set parameters (%s)\n",
 		 snd_strerror (err));
@@ -178,7 +182,7 @@ output_alsa_set_sw_params(struct output_state *s)
 
 	/* XXX hard-coded min */
 	if ((err = snd_pcm_sw_params_set_avail_min(sa->phdl,
-	    sw_params, 4096)) < 0) {
+	    sw_params, 32768)) < 0) {
 		fprintf (stderr, "cannot set minimum available count (%s)\n",
 			 snd_strerror (err));
 		return (err);
@@ -186,7 +190,7 @@ output_alsa_set_sw_params(struct output_state *s)
 
 	/* XXX hard-coded start threshold */
 	if ((err = snd_pcm_sw_params_set_start_threshold(sa->phdl,
-	    sw_params, 1024)) < 0) {
+	    sw_params, 16384)) < 0) {
 		fprintf (stderr, "cannot set start mode (%s)\n",
 			 snd_strerror (err));
 		return (err);
