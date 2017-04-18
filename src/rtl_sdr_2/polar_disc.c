@@ -24,7 +24,8 @@ multiply(int ar, int aj, int br, int bj, int *cr, int *cj)
  * A polar discriminant measures the phase difference between
  * two successive samples of a complex FM signal.  It takes
  * successive samples and multiples sample(t) by the complex
- * conjugate of the sample (t-1) (t being time.)
+ * conjugate of the sample (t-1) (t being time.)  The angle of
+ * the complex value result is the instantaneous FM signal.
  */
 int
 polar_discriminant(int ar, int aj, int br, int bj)
