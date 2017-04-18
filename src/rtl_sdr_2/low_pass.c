@@ -11,7 +11,7 @@
 #include "low_pass.h"
 
 /*
- * This implements a simple square window FIR filter and decimator.
+ * This implements a simple boxcar FIR filter and decimator.
  * It operates on both the I and Q samples.
  *
  * Yes, like a lot of things in rtl_fm, it's not entirely well
@@ -26,6 +26,10 @@
  * is the sum of the decimation. So a downsample=4 filter will
  * decimate by 4, each sample however is in the range of (-ve..0..+ve)*4.
  * (where -ve/+ve is the max values of the input range.)
+ *
+ * A normal boxcar FIR should be averaging each step so the range of the
+ * output doesn't change; I am guessing it's not done here to avoid
+ * precision loss (and for FM the magnitude doesn't matter.)
  */
 void
 low_pass(struct demod_state *d)
