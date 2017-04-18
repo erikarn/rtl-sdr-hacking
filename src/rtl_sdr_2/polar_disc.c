@@ -9,6 +9,10 @@ static int *atan_lut = NULL;
 static int atan_lut_size = 131072; /* 512 KB */
 static int atan_lut_coef = 8;
 
+/*
+ * This is just straight complex number multiplication.
+ * 'j' is imaginary here.
+ */
 static void
 multiply(int ar, int aj, int br, int bj, int *cr, int *cj)
 {
@@ -16,6 +20,12 @@ multiply(int ar, int aj, int br, int bj, int *cr, int *cj)
 	*cj = aj*br + ar*bj;
 }
 
+/*
+ * A polar discriminant measures the phase difference between
+ * two successive samples of a complex FM signal.  It takes
+ * successive samples and multiples sample(t) by the complex
+ * conjugate of the sample (t-1) (t being time.)
+ */
 int
 polar_discriminant(int ar, int aj, int br, int bj)
 {
@@ -99,7 +109,7 @@ polar_disc_lut(int ar, int aj, int br, int bj)
 
 	if (x_abs >= atan_lut_size) {
 		/* we can use linear range, but it is not necessary */
-		return (cj > 0) ? 1<<13 : -1<<13;
+		return (cj > 0) ? 1<<13 : -(1<<13);
 	}
 
 	if (x > 0) {
