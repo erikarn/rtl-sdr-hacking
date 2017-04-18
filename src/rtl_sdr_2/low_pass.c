@@ -10,6 +10,23 @@
 
 #include "low_pass.h"
 
+/*
+ * This implements a simple square window FIR filter and decimator.
+ * It operates on both the I and Q samples.
+ *
+ * Yes, like a lot of things in rtl_fm, it's not entirely well
+ * named.
+ *
+ * The 'downsample' value is both the decimation count (2 = 1/2,
+ * 3 = 1/3, 4 = 1/4, etc) and the filter window/order.
+ *
+ * The resulting data buffer (lowpassed/lp_len) is 1/downsample sized.
+ *
+ * Note: the resulting data value isn't averaged; each low_passed value
+ * is the sum of the decimation. So a downsample=4 filter will
+ * decimate by 4, each sample however is in the range of (-ve..0..+ve)*4.
+ * (where -ve/+ve is the max values of the input range.)
+ */
 void
 low_pass(struct demod_state *d)
 /* simple square window FIR */
