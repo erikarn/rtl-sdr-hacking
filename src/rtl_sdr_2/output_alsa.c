@@ -72,8 +72,8 @@ output_alsa_init(struct output_state *s)
 	return (0);
 }
 
-/* Set the playback config - for now, 32,000, int16_t, mono */
-/* XXX TODO: le16? be16? interleaved? etc */
+/* Set the playback config - for now, int16_t, mono */
+/* interleaved (but not important atm) */
 static int
 output_alsa_set_hw_params(struct output_state *s)
 {
