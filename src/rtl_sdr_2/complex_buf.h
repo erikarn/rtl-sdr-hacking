@@ -21,9 +21,10 @@ struct complex32 {
 typedef struct complex32 complex32_t;
 
 
-struct complex16_buf {
+struct complex16_ring {
 	complex16_t *buf;
-	int len;		/* how many entries are currently in the buffer */
+	int head;		/* head entry */
+	int tail;		/* tail entry */
 	int size;		/* how big buf is, in complex16's */
 };
 
@@ -47,13 +48,7 @@ extern	void complex16_conjugate(complex16_t *dst, const complex16_t *src);
 extern	void complex16_conjugatei(complex16_t *dst);
 
 /*
- * XXX TODO: trying hard to avoid floats I am.  Re-evaluate this and
- * convert it to something more suitable later.
- */
-extern	float complex16_arctan(const complex16_t *a, const complex16_t *b);
-
-/*
- * List operators on a complex16_buf list.
+ * List operators on a complex16_ring list.
  */
 
 #endif	/* __COMPLEX_BUF__ */
