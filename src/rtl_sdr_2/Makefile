@@ -3,7 +3,7 @@ PROG=main
 
 SRCS=	rtl_fm.c convenience.c rotate_90.c
 SRCS+=	output.c
-SRCS+=	low_pass.c fifth_order.c generic_fir.c
+SRCS+=	low_pass.c fifth_order.c generic_fir.c filter_deemph.c
 SRCS+=	polar_disc.c
 
 SRCS+=	output_file.c

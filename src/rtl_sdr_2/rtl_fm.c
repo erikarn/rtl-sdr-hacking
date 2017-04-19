@@ -89,6 +89,7 @@ static int ACTUAL_BUF_LENGTH;
 #include "rotate_90.h"
 #include "low_pass.h"
 #include "generic_fir.h"
+#include "filter_deemph.h"
 #include "polar_disc.h"
 
 #include "output_file.h"
@@ -278,23 +279,6 @@ void raw_demod(struct demod_state *fm)
 		fm->result[i] = (int16_t)fm->lowpassed[i];
 	}
 	fm->result_len = fm->lp_len;
-}
-
-void deemph_filter(struct demod_state *fm)
-{
-	static int avg;  // cheating...
-	int i, d;
-	// de-emph IIR
-	// avg = avg * (1 - alpha) + sample * alpha;
-	for (i = 0; i < fm->result_len; i++) {
-		d = fm->result[i] - avg;
-		if (d > 0) {
-			avg += (d + fm->deemph_a/2) / fm->deemph_a;
-		} else {
-			avg += (d - fm->deemph_a/2) / fm->deemph_a;
-		}
-		fm->result[i] = (int16_t)avg;
-	}
 }
 
 void dc_block_filter(struct demod_state *fm)
