@@ -9,6 +9,8 @@ SRCS+=	polar_disc.c
 SRCS+=	output_file.c
 SRCS+=	output_alsa.c
 
+SRCS+=	complex_buf.c
+
 MK_MAN=no
 LDADD=-lSDL -lGL -lGLU -lfftw3 -lm -lpthread -lrtlsdr -lasound
 CFLAGS+=	-I/usr/local/include/ -g -ggdb -Wall
