@@ -90,7 +90,9 @@ static int ACTUAL_BUF_LENGTH;
 #include "low_pass.h"
 #include "generic_fir.h"
 #include "filter_deemph.h"
+#include "filter_dc_block.h"
 #include "polar_disc.h"
+#include "resample.h"
 
 #include "output_file.h"
 #include "output_alsa.h"
@@ -281,21 +283,6 @@ void raw_demod(struct demod_state *fm)
 	fm->result_len = fm->lp_len;
 }
 
-void dc_block_filter(struct demod_state *fm)
-{
-	int i, avg;
-	int64_t sum = 0;
-	for (i=0; i < fm->result_len; i++) {
-		sum += fm->result[i];
-	}
-	avg = sum / fm->result_len;
-	avg = (avg + fm->dc_avg * 9) / 10;
-	for (i=0; i < fm->result_len; i++) {
-		fm->result[i] -= avg;
-	}
-	fm->dc_avg = avg;
-}
-
 int mad(int16_t *samples, int len, int step)
 /* mean average deviation */
 {
@@ -331,71 +318,6 @@ int rms(int16_t *samples, int len, int step)
 	err = t * 2 * dc - dc * dc * len;
 
 	return (int)sqrt((p-err) / len);
-}
-
-void arbitrary_upsample(int16_t *buf1, int16_t *buf2, int len1, int len2)
-/* linear interpolation, len1 < len2 */
-{
-	int i = 1;
-	int j = 0;
-	int tick = 0;
-	double frac;  // use integers...
-	while (j < len2) {
-		frac = (double)tick / (double)len2;
-		buf2[j] = (int16_t)(buf1[i-1]*(1-frac) + buf1[i]*frac);
-		j++;
-		tick += len1;
-		if (tick > len2) {
-			tick -= len2;
-			i++;
-		}
-		if (i >= len1) {
-			i = len1 - 1;
-			tick = len2;
-		}
-	}
-}
-
-void arbitrary_downsample(int16_t *buf1, int16_t *buf2, int len1, int len2)
-/* fractional boxcar lowpass, len1 > len2 */
-{
-	int i = 1;
-	int j = 0;
-	int tick = 0;
-	double remainder = 0;
-	double frac;  // use integers...
-	buf2[0] = 0;
-	while (j < len2) {
-		frac = 1.0;
-		if ((tick + len2) > len1) {
-			frac = (double)(len1 - tick) / (double)len2;}
-		buf2[j] += (int16_t)((double)buf1[i] * frac + remainder);
-		remainder = (double)buf1[i] * (1.0-frac);
-		tick += len2;
-		i++;
-		if (tick > len1) {
-			j++;
-			buf2[j] = 0;
-			tick -= len1;
-		}
-		if (i >= len1) {
-			i = len1 - 1;
-			tick = len1;
-		}
-	}
-	for (j=0; j<len2; j++) {
-		buf2[j] = buf2[j] * len2 / len1;}
-}
-
-void arbitrary_resample(int16_t *buf1, int16_t *buf2, int len1, int len2)
-/* up to you to calculate lengths and make sure it does not go OOB
- * okay for buffers to overlap, if you are downsampling */
-{
-	if (len1 < len2) {
-		arbitrary_upsample(buf1, buf2, len1, len2);
-	} else {
-		arbitrary_downsample(buf1, buf2, len1, len2);
-	}
 }
 
 void full_demod(struct demod_state *d)
