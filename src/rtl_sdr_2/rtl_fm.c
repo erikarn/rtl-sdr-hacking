@@ -334,6 +334,10 @@ void full_demod(struct demod_state *d)
 	}
 }
 
+/*
+ * This is called by libusb.  It needs to be as quick as possible;
+ * defer all heavy processing into a worker thread (or more!)
+ */
 static void rtlsdr_callback(unsigned char *buf, uint32_t len, void *ctx)
 {
 	int i;
@@ -344,6 +348,11 @@ static void rtlsdr_callback(unsigned char *buf, uint32_t len, void *ctx)
 		return;}
 	if (!ctx) {
 		return;}
+
+	/*
+	 * XXX TODO: this should just mute /up/ to s->mute bytes.
+	 * If we get a partial read then we overwrite memory.. :(
+	 */
 	if (s->mute) {
 		for (i=0; i<s->mute; i++) {
 			buf[i] = 127;}
@@ -351,8 +360,18 @@ static void rtlsdr_callback(unsigned char *buf, uint32_t len, void *ctx)
 	}
 	if (!s->offset_tuning) {
 		rotate_90(buf, len);}
+
+	/*
+	 * XXX TODO: this should be a method.
+	 */
 	for (i=0; i<(int)len; i++) {
-		s->buf16[i] = (int16_t)buf[i] - 127;}
+		s->buf16[i] = (int16_t)buf[i] - 127;
+	}
+
+	/*
+	 * XXX TODO: this should also be a method!
+	 * XXX TODO: it should append samples, not just overwrite them.
+	 */
 	pthread_rwlock_wrlock(&d->rw);
 	memcpy(d->lowpassed, s->buf16, 2*len);
 	d->lp_len = len;
