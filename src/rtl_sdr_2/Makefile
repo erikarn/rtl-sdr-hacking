@@ -5,7 +5,7 @@ SRCS=	rtl_fm.c convenience.c rotate_90.c
 SRCS+=	output.c
 SRCS+=	low_pass.c fifth_order.c generic_fir.c filter_deemph.c filter_dc_block.c
 SRCS+=	polar_disc.c
-SRCS+=	resample.c
+SRCS+=	resample.c rms.c
 
 SRCS+=	output_file.c
 SRCS+=	output_alsa.c

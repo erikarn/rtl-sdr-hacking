@@ -93,6 +93,7 @@ static int ACTUAL_BUF_LENGTH;
 #include "filter_dc_block.h"
 #include "polar_disc.h"
 #include "resample.h"
+#include "rms.h"
 
 #include "output_file.h"
 #include "output_alsa.h"
@@ -281,43 +282,6 @@ void raw_demod(struct demod_state *fm)
 		fm->result[i] = (int16_t)fm->lowpassed[i];
 	}
 	fm->result_len = fm->lp_len;
-}
-
-int mad(int16_t *samples, int len, int step)
-/* mean average deviation */
-{
-	int i=0, sum=0, ave=0;
-	if (len == 0)
-		{return 0;}
-	for (i=0; i<len; i+=step) {
-		sum += samples[i];
-	}
-	ave = sum / (len * step);
-	sum = 0;
-	for (i=0; i<len; i+=step) {
-		sum += abs(samples[i] - ave);
-	}
-	return sum / (len / step);
-}
-
-int rms(int16_t *samples, int len, int step)
-/* largely lifted from rtl_power */
-{
-	int i;
-	long p, t, s;
-	double dc, err;
-
-	p = t = 0L;
-	for (i=0; i<len; i+=step) {
-		s = (long)samples[i];
-		t += s;
-		p += s * s;
-	}
-	/* correct for dc offset in squares */
-	dc = (double)(t*step) / (double)len;
-	err = t * 2 * dc - dc * dc * len;
-
-	return (int)sqrt((p-err) / len);
 }
 
 void full_demod(struct demod_state *d)
