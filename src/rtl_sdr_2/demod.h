@@ -37,4 +37,11 @@ struct demod_state
 	struct output_state *output_target;
 };
 
+extern	void fm_demod(struct demod_state *fm);
+extern	void am_demod(struct demod_state *fm);
+extern	void lsb_demod(struct demod_state *fm);
+extern	void usb_demod(struct demod_state *fm);
+extern	void raw_demod(struct demod_state *fm);
+extern	void full_demod(struct demod_state *d);
+
 #endif	/* __DEMOD_H__ */
