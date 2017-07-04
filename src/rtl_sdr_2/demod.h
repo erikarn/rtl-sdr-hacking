@@ -16,10 +16,12 @@ struct demod_state
 	int      rate_in;
 	int      rate_out;
 	int      rate_out2;
-	int      now_r, now_j;
+
+	/* low pass filter state */
+	struct low_pass *lp;
+
 	int      pre_r, pre_j;
-	int      prev_index;
-	int      downsample;    /* min 1, max 256 */
+
 	int      post_downsample;
 	int      output_scale;
 	int      squelch_level, conseq_squelch, squelch_hits, terminate_on_squelch;
@@ -27,8 +29,9 @@ struct demod_state
 	int      comp_fir_size;
 	int      custom_atan;
 	int      deemph, deemph_a;
-	int      now_lpr;
-	int      prev_lpr_index;
+
+	/* low pass real state */
+	struct low_pass_real *lpr;
 	int      dc_block, dc_avg;
 	void     (*mode_demod)(struct demod_state*);
 	pthread_rwlock_t rw;

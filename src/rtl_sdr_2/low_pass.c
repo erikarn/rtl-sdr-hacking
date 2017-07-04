@@ -1,14 +1,16 @@
 
 #include <stdio.h>
 #include <stdint.h>
+#include <stdlib.h>
+#include <err.h>
 #include <pthread.h>
 
 #include "config.h"
 
+#include "low_pass.h"
+
 /* XXX sigh */
 #include "demod.h"
-
-#include "low_pass.h"
 
 /*
  * This implements a simple boxcar FIR filter and decimator.
@@ -32,23 +34,23 @@
  * precision loss (and for FM the magnitude doesn't matter.)
  */
 void
-low_pass(struct demod_state *d)
+low_pass(struct demod_state *d, struct low_pass *lp)
 /* simple square window FIR */
 {
 	int i=0, i2=0;
 	while (i < d->lp_len) {
-		d->now_r += d->lowpassed[i];
-		d->now_j += d->lowpassed[i+1];
+		lp->now_r += d->lowpassed[i];
+		lp->now_j += d->lowpassed[i+1];
 		i += 2;
-		d->prev_index++;
-		if (d->prev_index < d->downsample) {
+		lp->prev_index++;
+		if (lp->prev_index < lp->downsample) {
 			continue;
 		}
-		d->lowpassed[i2]   = d->now_r; // * d->output_scale;
-		d->lowpassed[i2+1] = d->now_j; // * d->output_scale;
-		d->prev_index = 0;
-		d->now_r = 0;
-		d->now_j = 0;
+		d->lowpassed[i2]   = lp->now_r; // * d->output_scale;
+		d->lowpassed[i2+1] = lp->now_j; // * d->output_scale;
+		lp->prev_index = 0;
+		lp->now_r = 0;
+		lp->now_j = 0;
 		i2 += 2;
 	}
 	d->lp_len = i2;
@@ -72,7 +74,7 @@ low_pass_simple(int16_t *signal2, int len, int step)
 }
 
 void
-low_pass_real(struct demod_state *s)
+low_pass_real(struct demod_state *s, struct low_pass_real *lpr)
 /* simple square window FIR */
 // add support for upsampling?
 {
@@ -80,16 +82,70 @@ low_pass_real(struct demod_state *s)
 	int fast = (int)s->rate_out;
 	int slow = s->rate_out2;
 	while (i < s->result_len) {
-		s->now_lpr += s->result[i];
+		lpr->now_lpr += s->result[i];
 		i++;
-		s->prev_lpr_index += slow;
-		if (s->prev_lpr_index < fast) {
+		lpr->prev_lpr_index += slow;
+		if (lpr->prev_lpr_index < fast) {
 			continue;
 		}
-		s->result[i2] = (int16_t)(s->now_lpr / (fast/slow));
-		s->prev_lpr_index -= fast;
-		s->now_lpr = 0;
+		s->result[i2] = (int16_t)(lpr->now_lpr / (fast/slow));
+		lpr->prev_lpr_index -= fast;
+		lpr->now_lpr = 0;
 		i2 += 1;
 	}
 	s->result_len = i2;
+}
+
+struct low_pass *
+low_pass_create(void)
+{
+	struct low_pass *lp;
+
+	lp = calloc(1, sizeof(*lp));
+	if (lp == NULL) {
+		warn("%s: calloc", __func__);
+		return (NULL);
+	}
+	return (lp);
+}
+
+void
+low_pass_free(struct low_pass *lp)
+{
+
+	free(lp);
+}
+
+void
+low_pass_set_downsample(struct low_pass *lp, int downsample)
+{
+
+	lp->downsample = downsample;
+}
+
+int
+low_pass_get_downsample(struct low_pass *lp)
+{
+
+	return (lp->downsample);
+}
+
+struct low_pass_real *
+low_pass_real_create(void)
+{
+	struct low_pass_real *lpr;
+
+	lpr = calloc(1, sizeof(*lpr));
+	if (lpr == NULL) {
+		warn("%s: calloc", __func__);
+		return (NULL);
+	}
+	return (lpr);
+}
+
+void
+low_pass_real_free(struct low_pass_real *lpr)
+{
+
+	free(lpr);
 }

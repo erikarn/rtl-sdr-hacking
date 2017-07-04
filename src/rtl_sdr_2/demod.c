@@ -151,7 +151,7 @@ full_demod(struct demod_state *d)
 				cic_9_tables[ds_p], d->droop_q_hist);
 		}
 	} else {
-		low_pass(d);
+		low_pass(d, d->lp);
 	}
 	/* power squelch */
 	if (d->squelch_level) {
@@ -177,7 +177,7 @@ full_demod(struct demod_state *d)
 	if (d->dc_block) {
 		dc_block_filter(d);}
 	if (d->rate_out2 > 0) {
-		low_pass_real(d);
+		low_pass_real(d, d->lpr);
 		//arbitrary_resample(d->result, d->result, d->result_len, d->result_len * d->rate_out2 / d->rate_out);
 	}
 }
