@@ -81,13 +81,15 @@ static int lcm_post[17] = {1,1,1,3,1,5,3,7,1,9,5,11,3,13,7,15,1};
 static int ACTUAL_BUF_LENGTH;
 
 #include "dongle.h"
+
+#include "low_pass.h"
+
 #include "demod.h"
 #include "output.h"
 #include "controller.h"
 
 #include "fifth_order.h"
 #include "rotate_90.h"
-#include "low_pass.h"
 #include "generic_fir.h"
 #include "filter_deemph.h"
 #include "filter_dc_block.h"
@@ -266,17 +268,23 @@ static void optimal_settings(int freq, int rate)
 	struct dongle_state *d = &dongle;
 	struct demod_state *dm = &demod;
 	struct controller_state *cs = &controller;
-	dm->downsample = (1000000 / dm->rate_in) + 1;
+	int downsample;
+
+	downsample = (1000000 / dm->rate_in) + 1;
+
+	low_pass_set_downsample(dm->lp, downsample);
+
 	if (dm->downsample_passes) {
-		dm->downsample_passes = (int)log2(dm->downsample) + 1;
-		dm->downsample = 1 << dm->downsample_passes;
+		dm->downsample_passes = (int)log2(downsample) + 1;
+		downsample = 1 << dm->downsample_passes;
+		low_pass_set_downsample(dm->lp, downsample);
 	}
 	capture_freq = freq;
-	capture_rate = dm->downsample * dm->rate_in;
+	capture_rate = downsample * dm->rate_in;
 	if (!d->offset_tuning) {
 		capture_freq = freq + capture_rate/4;}
 	capture_freq += cs->edge * dm->rate_in / 2;
-	dm->output_scale = (1<<15) / (128 * dm->downsample);
+	dm->output_scale = (1<<15) / (128 * downsample);
 	if (dm->output_scale < 1) {
 		dm->output_scale = 1;}
 	if (dm->mode_demod == &fm_demod) {
@@ -306,7 +314,7 @@ static void *controller_thread_fn(void *arg)
 
 	/* Set the frequency */
 	verbose_set_frequency(dongle.dev, dongle.freq);
-	fprintf(stderr, "Oversampling input by: %ix.\n", demod.downsample);
+	fprintf(stderr, "Oversampling input by: %ix.\n", low_pass_get_downsample(demod.lp));
 	fprintf(stderr, "Oversampling output by: %ix.\n", demod.post_downsample);
 	fprintf(stderr, "Buffer size: %0.2fms\n",
 		1000 * 0.5 * (float)ACTUAL_BUF_LENGTH / (float)dongle.rate);
@@ -369,16 +377,17 @@ void demod_init(struct demod_state *s)
 	s->squelch_hits = 11;
 	s->downsample_passes = 0;
 	s->comp_fir_size = 0;
-	s->prev_index = 0;
+
+	s->lp = low_pass_create();
+	s->lpr = low_pass_real_create();
+
 	s->post_downsample = 1;  // once this works, default = 4
 	s->custom_atan = 0;
 	s->deemph = 0;
 	s->rate_out2 = -1;  // flag for disabled
 	s->mode_demod = &fm_demod;
-	s->pre_j = s->pre_r = s->now_r = s->now_j = 0;
-	s->prev_lpr_index = 0;
+	s->pre_j = s->pre_r = 0;
 	s->deemph_a = 0;
-	s->now_lpr = 0;
 	s->dc_block = 0;
 	s->dc_avg = 0;
 	pthread_rwlock_init(&s->rw, NULL);
